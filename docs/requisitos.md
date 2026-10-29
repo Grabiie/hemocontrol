@@ -78,16 +78,20 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RN-02
 **Nome:** Idade e peso mínimos
-**Descrição:** Só podem ser classificadas como aptas pessoas com idade entre 16 e 69 anos e peso mínimo de 50 kg.
+**Descrição:** Só podem ser classificados como aptos candidatos com idade mínima de 16 anos (de 16 a 17 anos, com consentimento formal do responsável legal) e peso mínimo de 50 kg. Quem nunca doou só pode fazer a primeira doação até 60 anos, 11 meses e 29 dias.
 
 ### RN-03
 **Nome:** Intervalo entre doações
-**Descrição:** O sistema deve exigir intervalo mínimo de 60 dias entre doações de homens e de 90 dias entre doações de mulheres.
+**Descrição:** O sistema deve exigir intervalo mínimo de 60 dias entre doações de homens e de 90 dias entre doações de mulheres, com limite de 4 doações por ano para homens e 3 para mulheres.
 
 ### RN-04
 **Nome:** Validade da bolsa
-**Descrição:** Cada bolsa vence 35 dias após a coleta, e bolsa vencida não pode ser destinada a nenhuma solicitação.
+**Descrição:** Cada bolsa vence 35 dias após a coleta (valor adotado pelo projeto), e bolsa vencida não pode ser destinada a nenhuma solicitação.
 
 ### RN-05
 **Nome:** Triagem obrigatória
 **Descrição:** O sistema não deve permitir o registro de uma doação sem uma triagem prévia com resultado "apto".
+
+### RN-06
+**Nome:** Critérios clínicos da triagem
+**Descrição:** O doador só pode ser classificado como apto se a hemoglobina estiver entre 13,0 e 18,5 g/dL (homens) ou entre 12,5 e 16,5 g/dL (mulheres). A pressão arterial deve estar entre 90 e 180 mmHg (sistólica) e entre 60 e 100 mmHg (diastólica); fora dessa faixa, o doador só é aceito após avaliação do médico. Valores de pressão adotados como referência do projeto.
