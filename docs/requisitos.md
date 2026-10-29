@@ -44,6 +44,10 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 **Nome:** Gerar relatório mensal
 **Descrição:** O sistema deve gerar, ao final de cada mês, um relatório com o total de doações, bolsas descartadas e solicitações atendidas.
 
+### RF-11
+**Nome:** Registrar inaptidão temporária
+**Descrição:** O sistema deve permitir que o médico registre o motivo e o prazo da inaptidão temporária de um doador reprovado na triagem.
+
 ## Requisitos Não Funcionais (RNF)
 
 ### RNF-01
