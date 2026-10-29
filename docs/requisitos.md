@@ -30,7 +30,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-07
 **Nome:** Registrar solicitação de bolsas
-**Descrição:** O sistema deve receber, por integração com o sistema do hospital solicitante, solicitações de bolsas contendo identificação do hospital, tipo sanguíneo e quantidade desejada.
+**Descrição:** O sistema deve registrar solicitações de bolsas contendo identificação do hospital, tipo sanguíneo e quantidade desejada, recebidas por integração com o sistema do hospital solicitante ou informadas manualmente pelo gestor.
 
 ### RF-08
 **Nome:** Atender solicitação
