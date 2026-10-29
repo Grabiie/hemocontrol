@@ -30,7 +30,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-07
 **Nome:** Registrar solicitação de bolsas
-**Descrição:** O sistema deve registrar solicitações de bolsas feitas por hospitais, informando o hospital, o tipo sanguíneo e a quantidade desejada.
+**Descrição:** O sistema deve receber, por integração com o sistema do hospital solicitante, solicitações de bolsas contendo identificação do hospital, tipo sanguíneo e quantidade desejada.
 
 ### RF-08
 **Nome:** Atender solicitação
@@ -38,7 +38,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-09
 **Nome:** Descartar bolsas vencidas
-**Descrição:** O sistema deve marcar como descartadas as bolsas cuja validade tenha expirado, retirando-as do estoque disponível.
+**Descrição:** O sistema deve permitir que o gestor registre o descarte das bolsas cuja validade tenha expirado, retirando-as do estoque disponível.
 
 ### RF-10
 **Nome:** Gerar relatório mensal
@@ -65,6 +65,10 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 ### RNF-04
 **Nome:** Usabilidade do cadastro
 **Descrição:** Um recepcionista deve conseguir cadastrar um doador em até 3 minutos, após 1 hora de treinamento no sistema.
+
+### RNF-05
+**Nome:** Autenticação de sistemas externos
+**Descrição:** O sistema deve aceitar solicitações de sistemas externos somente com chave de acesso válida, rejeitando as demais requisições com mensagem de erro.
 
 ## Regras de Negócio (RN)
 
