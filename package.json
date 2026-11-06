@@ -1,0 +1,19 @@
+{
+  "name": "hemocontrol",
+  "version": "0.1.0",
+  "description": "Sistema de gestão de banco de sangue — projeto de Análise e Projeto de Sistemas",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seed.js",
+    "test": "node --test"
+  },
+  "author": "Gabriel José",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "express": "^5.3.0"
+  }
+}
