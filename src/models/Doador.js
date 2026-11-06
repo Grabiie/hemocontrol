@@ -1,0 +1,104 @@
+import { Sexo, TipoSanguineo, validarEnum } from './enums.js';
+import { diasEntre } from './datas.js';
+
+// RN-02: idade mínima e limite para a primeira doação
+const IDADE_MINIMA = 16;
+const IDADE_MAIORIDADE = 18;
+const IDADE_MAXIMA_PRIMEIRA_DOACAO = 60;
+
+// RN-03: intervalo mínimo (dias) e limite anual de doações por sexo
+const INTERVALO_DIAS = { [Sexo.MASCULINO]: 60, [Sexo.FEMININO]: 90 };
+const LIMITE_ANUAL = { [Sexo.MASCULINO]: 4, [Sexo.FEMININO]: 3 };
+
+export class Doador {
+  #id;
+  #nome;
+  #cpf;
+  #dataNascimento;
+  #sexo;
+  #tipoSanguineo;
+  #telefone;
+  #consentimentoResponsavel;
+
+  constructor({ id = null, nome, cpf, dataNascimento, sexo, tipoSanguineo, telefone, consentimentoResponsavel = false }) {
+    if (!nome || !nome.trim()) throw new Error('O nome do doador é obrigatório.');
+
+    this.#id = id;
+    this.#nome = nome.trim();
+    this.#cpf = String(cpf).replace(/\D/g, '');
+    this.#dataNascimento = new Date(dataNascimento);
+    this.#sexo = validarEnum(Sexo, sexo, 'sexo');
+    this.#tipoSanguineo = validarEnum(TipoSanguineo, tipoSanguineo, 'tipo sanguíneo');
+    this.#telefone = telefone ?? '';
+    this.#consentimentoResponsavel = Boolean(consentimentoResponsavel);
+
+    if (Number.isNaN(this.#dataNascimento.getTime())) throw new Error('Data de nascimento inválida.');
+    if (!this.validarCpf()) throw new Error('CPF inválido.');
+  }
+
+  get id() { return this.#id; }
+  get nome() { return this.#nome; }
+  get cpf() { return this.#cpf; }
+  get dataNascimento() { return this.#dataNascimento; }
+  get sexo() { return this.#sexo; }
+  get tipoSanguineo() { return this.#tipoSanguineo; }
+  get telefone() { return this.#telefone; }
+  get consentimentoResponsavel() { return this.#consentimentoResponsavel; }
+
+  // Validação dos dígitos verificadores do CPF
+  validarCpf() {
+    const cpf = this.#cpf;
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+    const digito = (tamanho) => {
+      let soma = 0;
+      for (let i = 0; i < tamanho; i++) soma += Number(cpf[i]) * (tamanho + 1 - i);
+      const resto = (soma * 10) % 11;
+      return resto === 10 ? 0 : resto;
+    };
+
+    return digito(9) === Number(cpf[9]) && digito(10) === Number(cpf[10]);
+  }
+
+  calcularIdade(dataReferencia = new Date()) {
+    const nasc = this.#dataNascimento;
+    let idade = dataReferencia.getFullYear() - nasc.getFullYear();
+    const aindaNaoFezAniversario =
+      dataReferencia.getMonth() < nasc.getMonth() ||
+      (dataReferencia.getMonth() === nasc.getMonth() && dataReferencia.getDate() < nasc.getDate());
+    if (aindaNaoFezAniversario) idade--;
+    return idade;
+  }
+
+  // RN-02 e RN-03: verifica idade, consentimento, intervalo e limite anual
+  podeDoarEm(data, datasDoacoes = []) {
+    const idade = this.calcularIdade(data);
+
+    if (idade < IDADE_MINIMA) return false;
+    if (idade < IDADE_MAIORIDADE && !this.#consentimentoResponsavel) return false;
+    if (datasDoacoes.length === 0 && idade > IDADE_MAXIMA_PRIMEIRA_DOACAO) return false;
+
+    if (datasDoacoes.length > 0) {
+      const ultima = new Date(Math.max(...datasDoacoes.map((d) => d.getTime())));
+      if (diasEntre(ultima, data) < INTERVALO_DIAS[this.#sexo]) return false;
+
+      const doacoesNoUltimoAno = datasDoacoes.filter((d) => diasEntre(d, data) < 365).length;
+      if (doacoesNoUltimoAno >= LIMITE_ANUAL[this.#sexo]) return false;
+    }
+
+    return true;
+  }
+
+  toJSON() {
+    return {
+      id: this.#id,
+      nome: this.#nome,
+      cpf: this.#cpf,
+      dataNascimento: this.#dataNascimento.toISOString().slice(0, 10),
+      sexo: this.#sexo,
+      tipoSanguineo: this.#tipoSanguineo,
+      telefone: this.#telefone,
+      consentimentoResponsavel: this.#consentimentoResponsavel,
+    };
+  }
+}
