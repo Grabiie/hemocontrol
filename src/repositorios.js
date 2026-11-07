@@ -72,8 +72,8 @@ export function salvarTriagem(triagem) {
   const m = triagem.medicao;
   const { lastInsertRowid } = db
     .prepare(
-      `INSERT INTO triagem (doador_id, data_hora, apto, peso, pressao_sistolica, pressao_diastolica, hemoglobina)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO triagem (doador_id, data_hora, apto, peso, pressao_sistolica, pressao_diastolica, hemoglobina, motivos)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       triagem.doador.id,
@@ -83,6 +83,7 @@ export function salvarTriagem(triagem) {
       m.pressaoSistolica,
       m.pressaoDiastolica,
       m.hemoglobina,
+      JSON.stringify(triagem.getMotivos()),
     );
   return buscarTriagem(Number(lastInsertRowid));
 }
@@ -96,6 +97,7 @@ export function buscarTriagem(id) {
     doador: buscarDoadorPorId(linha.doador_id),
     dataHora: linha.data_hora,
     apto: linha.apto === 1,
+    motivos: JSON.parse(linha.motivos ?? '[]'),
     medicao: {
       peso: linha.peso,
       pressaoSistolica: linha.pressao_sistolica,

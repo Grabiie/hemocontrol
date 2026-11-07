@@ -29,7 +29,8 @@ db.exec(`
     peso REAL NOT NULL,
     pressao_sistolica INTEGER NOT NULL,
     pressao_diastolica INTEGER NOT NULL,
-    hemoglobina REAL NOT NULL
+    hemoglobina REAL NOT NULL,
+    motivos TEXT NOT NULL DEFAULT '[]'    -- motivos da inaptidão, em JSON
   );
 
   CREATE TABLE IF NOT EXISTS doacao (
@@ -50,3 +51,9 @@ db.exec(`
     status TEXT NOT NULL
   );
 `);
+
+// Migração: bancos criados antes da coluna "motivos" recebem a coluna nova
+const colunasTriagem = db.prepare('PRAGMA table_info(triagem)').all().map((c) => c.name);
+if (!colunasTriagem.includes('motivos')) {
+  db.exec(`ALTER TABLE triagem ADD COLUMN motivos TEXT NOT NULL DEFAULT '[]'`);
+}
