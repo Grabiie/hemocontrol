@@ -8,6 +8,29 @@ for (const [valor, rotulo] of Object.entries(TIPOS)) {
   selectTipo.add(new Option(rotulo, valor));
 }
 
+// Máscara de CPF: 52998224725 -> 529.982.247-25
+function formatarCpf(valor) {
+  const d = valor.replace(/\D/g, '').slice(0, 11);
+  if (d.length > 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+  if (d.length > 6) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  if (d.length > 3) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  return d;
+}
+
+document.querySelectorAll('input[name=cpf]').forEach((campo) => {
+  campo.addEventListener('input', () => {
+    // Mantém o cursor no lugar certo ao inserir pontos e traço
+    const digitosAntesDoCursor = campo.value.slice(0, campo.selectionStart).replace(/\D/g, '').length;
+    campo.value = formatarCpf(campo.value);
+
+    let pos = 0;
+    for (let contados = 0; pos < campo.value.length && contados < digitosAntesDoCursor; pos++) {
+      if (/\d/.test(campo.value[pos])) contados++;
+    }
+    campo.setSelectionRange(pos, pos);
+  });
+});
+
 function mostrar(id, texto, tipo) {
   const el = document.getElementById(id);
   el.textContent = texto;
@@ -37,7 +60,7 @@ document.getElementById('form-doador').addEventListener('submit', async (e) => {
   try {
     const doador = await enviar('/api/doadores', dados);
     mostrar('msg-doador', `Doador ${doador.nome} cadastrado (tipo ${TIPOS[doador.tipoSanguineo]}).`, 'sucesso');
-    document.querySelector('#form-triagem [name=cpf]').value = doador.cpf;
+    document.querySelector('#form-triagem [name=cpf]').value = formatarCpf(doador.cpf);
     e.target.reset();
   } catch (erro) {
     mostrar('msg-doador', erro.message, 'erro');
