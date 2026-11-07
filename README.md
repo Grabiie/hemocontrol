@@ -52,12 +52,32 @@ npm start
 
 O servidor sobe em `http://localhost:3000`.
 
+Para popular o estoque com bolsas de exemplo (útil para demonstração):
+
+```bash
+npm run seed
+```
+
+Para rodar os testes das regras de negócio:
+
+```bash
+npm test
+```
+
 ## Estrutura do repositório
 
 ```
 hemocontrol/
-├── docs/        # documentação (requisitos, casos de uso, diagrama de classes)
-├── src/         # código-fonte
+├── docs/              # documentação (requisitos, casos de uso, diagrama de classes)
+├── public/            # interface web (HTML, CSS e JavaScript)
+├── src/
+│   ├── models/        # classes de domínio do diagrama de classes
+│   ├── database.js    # criação das tabelas SQLite
+│   ├── repositorios.js# leitura e gravação no banco
+│   ├── seed.js        # dados de exemplo
+│   └── server.js      # API REST com Express
+├── test/              # testes das regras de negócio
+├── package.json
 ├── README.md
 ├── LICENSE
 └── .gitignore
@@ -73,13 +93,19 @@ Os artefatos de análise e projeto ficam na pasta [`docs/`](docs/):
 
 ## Status do projeto
 
-Em desenvolvimento.
+Em desenvolvimento. Implementação inicial focada no fluxo principal do banco de sangue.
 
-- [ ] Requisitos
-- [ ] Diagrama de casos de uso
-- [ ] Diagrama de classes
-- [ ] Cadastro de doadores
-- [ ] Registro de doações e estoque
+- [x] Requisitos
+- [x] Diagrama de casos de uso
+- [x] Diagrama de classes
+- [x] Cadastro de doadores (RF-02, RN-01)
+- [x] Triagem com critérios de aptidão (RF-03, RN-02, RN-03, RN-06)
+- [x] Registro de doação e geração de bolsa (RF-04, RN-04, RN-05)
+- [x] Consulta de estoque com alerta de estoque crítico (RF-05, RF-06)
+- [ ] Autenticação por perfil (RF-01)
+- [ ] Solicitações de hospitais (RF-07, RF-08)
+- [ ] Descarte de bolsas vencidas e relatório mensal (RF-09, RF-10)
+- [ ] Registro de inaptidão temporária (RF-11)
 
 ## Convenção de commits
 
