@@ -59,12 +59,15 @@ main {
 }
 
 form { display: flex; flex-direction: column; gap: 10px; }
-.linha { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.linha { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 
 label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--suave); }
 label.check { flex-direction: row; align-items: center; gap: 8px; }
+label.check input { width: auto; }
 
 input, select {
+  width: 100%;
+  min-width: 0;
   font: inherit;
   color: var(--texto);
   padding: 8px 10px;
@@ -89,6 +92,8 @@ button:hover { filter: brightness(1.1); }
 .mensagem { margin: 12px 0 0; padding: 0; font-size: 0.9rem; min-height: 1.2em; }
 .mensagem.sucesso { color: var(--verde); }
 .mensagem.erro { color: var(--vermelho); }
+.motivos { margin: 6px 0 0; padding-left: 18px; color: var(--texto); font-size: 0.85rem; }
+.motivos li { margin-bottom: 3px; }
 
 .legenda { margin: -6px 0 16px; color: var(--suave); font-size: 0.9rem; }
 

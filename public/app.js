@@ -53,7 +53,13 @@ document.getElementById('form-triagem').addEventListener('submit', async (e) => 
       mostrar('msg-triagem', `Triagem nº ${triagem.id}: doador APTO.`, 'sucesso');
       document.querySelector('#form-doacao [name=triagemId]').value = triagem.id;
     } else {
-      mostrar('msg-triagem', `Triagem nº ${triagem.id}: doador INAPTO para doar no momento.`, 'erro');
+      mostrar('msg-triagem', `Triagem nº ${triagem.id}: doador INAPTO.`, 'erro');
+      const lista = document.createElement('ul');
+      lista.className = 'motivos';
+      for (const motivo of triagem.motivos) {
+        lista.appendChild(Object.assign(document.createElement('li'), { textContent: motivo }));
+      }
+      document.getElementById('msg-triagem').appendChild(lista);
     }
   } catch (erro) {
     mostrar('msg-triagem', erro.message, 'erro');
