@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HemoControl</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>HemoControl</h1>
+    <p>Gestão de banco de sangue</p>
+  </header>
+
+  <main>
+    <section class="painel" id="painel-doador">
+      <h2><span class="passo">1</span> Cadastrar doador</h2>
+      <form id="form-doador">
+        <label>Nome <input name="nome" required></label>
+        <label>CPF <input name="cpf" required placeholder="000.000.000-00"></label>
+        <div class="linha">
+          <label>Nascimento <input name="dataNascimento" type="date" required></label>
+          <label>Sexo
+            <select name="sexo" required>
+              <option value="MASCULINO">Masculino</option>
+              <option value="FEMININO">Feminino</option>
+            </select>
+          </label>
+        </div>
+        <div class="linha">
+          <label>Tipo sanguíneo
+            <select name="tipoSanguineo" id="select-tipo" required></select>
+          </label>
+          <label>Telefone <input name="telefone"></label>
+        </div>
+        <label class="check">
+          <input type="checkbox" name="consentimentoResponsavel">
+          Consentimento do responsável (16 e 17 anos)
+        </label>
+        <button type="submit">Cadastrar</button>
+      </form>
+      <p class="mensagem" id="msg-doador"></p>
+    </section>
+
+    <section class="painel" id="painel-triagem">
+      <h2><span class="passo">2</span> Realizar triagem</h2>
+      <form id="form-triagem">
+        <label>CPF do doador <input name="cpf" required></label>
+        <div class="linha">
+          <label>Peso (kg) <input name="peso" type="number" step="0.1" required></label>
+          <label>Hemoglobina (g/dL) <input name="hemoglobina" type="number" step="0.1" required></label>
+        </div>
+        <div class="linha">
+          <label>Pressão sistólica <input name="pressaoSistolica" type="number" required></label>
+          <label>Pressão diastólica <input name="pressaoDiastolica" type="number" required></label>
+        </div>
+        <button type="submit">Avaliar</button>
+      </form>
+      <p class="mensagem" id="msg-triagem"></p>
+    </section>
+
+    <section class="painel" id="painel-doacao">
+      <h2><span class="passo">3</span> Registrar doação</h2>
+      <form id="form-doacao">
+        <label>Nº da triagem <input name="triagemId" type="number" required></label>
+        <label>Volume coletado (mL) <input name="volumeMl" type="number" value="450" required></label>
+        <button type="submit">Registrar</button>
+      </form>
+      <p class="mensagem" id="msg-doacao"></p>
+    </section>
+
+    <section class="painel largo" id="painel-estoque">
+      <h2>Estoque por tipo sanguíneo</h2>
+      <p class="legenda">Alerta quando há menos de <strong id="limite"></strong> bolsas disponíveis.</p>
+      <div class="grade" id="grade-estoque"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
