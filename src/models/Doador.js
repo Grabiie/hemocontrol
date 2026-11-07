@@ -70,23 +70,40 @@ export class Doador {
     return idade;
   }
 
-  // RN-02 e RN-03: verifica idade, consentimento, intervalo e limite anual
-  podeDoarEm(data, datasDoacoes = []) {
+  // RN-02 e RN-03: lista os motivos que impedem a doação na data informada
+  listarImpedimentos(data, datasDoacoes = []) {
+    const motivos = [];
     const idade = this.calcularIdade(data);
 
-    if (idade < IDADE_MINIMA) return false;
-    if (idade < IDADE_MAIORIDADE && !this.#consentimentoResponsavel) return false;
-    if (datasDoacoes.length === 0 && idade > IDADE_MAXIMA_PRIMEIRA_DOACAO) return false;
+    if (idade < IDADE_MINIMA) {
+      motivos.push(`Idade abaixo do mínimo de ${IDADE_MINIMA} anos (RN-02).`);
+    } else if (idade < IDADE_MAIORIDADE && !this.#consentimentoResponsavel) {
+      motivos.push('Menor de 18 anos sem consentimento do responsável (RN-02).');
+    }
+    if (datasDoacoes.length === 0 && idade > IDADE_MAXIMA_PRIMEIRA_DOACAO) {
+      motivos.push(`Primeira doação só é permitida até ${IDADE_MAXIMA_PRIMEIRA_DOACAO} anos (RN-02).`);
+    }
 
     if (datasDoacoes.length > 0) {
       const ultima = new Date(Math.max(...datasDoacoes.map((d) => d.getTime())));
-      if (diasEntre(ultima, data) < INTERVALO_DIAS[this.#sexo]) return false;
+      const intervalo = INTERVALO_DIAS[this.#sexo];
+      const diasDesdeUltima = diasEntre(ultima, data);
+      if (diasDesdeUltima < intervalo) {
+        motivos.push(`Última doação há ${diasDesdeUltima} dias; o intervalo mínimo é de ${intervalo} dias (RN-03).`);
+      }
 
+      const limite = LIMITE_ANUAL[this.#sexo];
       const doacoesNoUltimoAno = datasDoacoes.filter((d) => diasEntre(d, data) < 365).length;
-      if (doacoesNoUltimoAno >= LIMITE_ANUAL[this.#sexo]) return false;
+      if (doacoesNoUltimoAno >= limite) {
+        motivos.push(`Limite de ${limite} doações nos últimos 12 meses atingido (RN-03).`);
+      }
     }
 
-    return true;
+    return motivos;
+  }
+
+  podeDoarEm(data, datasDoacoes = []) {
+    return this.listarImpedimentos(data, datasDoacoes).length === 0;
   }
 
   toJSON() {

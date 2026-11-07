@@ -91,3 +91,24 @@ test('RF-06: estoque é crítico abaixo de 10 bolsas e ignora vencidas', () => {
   assert.equal(estoque.consultarDisponiveis('B_NEGATIVO', HOJE).length, 0);
   assert.equal(estoque.descartarVencidas(HOJE).length, 1);
 });
+
+test('RF-03: triagem inapta informa todos os motivos', () => {
+  const triagem = new Triagem({
+    doador: doador(),
+    medicao: { peso: 45, pressaoSistolica: 120, pressaoDiastolica: 80, hemoglobina: 11.0 },
+    dataHora: HOJE,
+  });
+  assert.equal(triagem.avaliar([somarDias(HOJE, -30)]), false);
+
+  const motivos = triagem.getMotivos();
+  assert.equal(motivos.length, 3);
+  assert.match(motivos.join(' '), /intervalo mínimo/);
+  assert.match(motivos.join(' '), /Peso/);
+  assert.match(motivos.join(' '), /Hemoglobina/);
+});
+
+test('RF-03: triagem apta não tem motivos', () => {
+  const triagem = new Triagem({ doador: doador(), medicao: medicaoNormal, dataHora: HOJE });
+  assert.equal(triagem.avaliar(), true);
+  assert.deepEqual(triagem.getMotivos(), []);
+});

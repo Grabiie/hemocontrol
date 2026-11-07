@@ -11,6 +11,8 @@ const HEMOGLOBINA = {
 const SISTOLICA = { min: 90, max: 180 };
 const DIASTOLICA = { min: 60, max: 100 };
 
+const fmt = (n) => n.toLocaleString('pt-BR');
+
 // Parte da composição Triagem ◆ MedicaoClinica:
 // só existe dentro de uma triagem.
 export class MedicaoClinica {
@@ -37,14 +39,30 @@ export class MedicaoClinica {
   get pressaoDiastolica() { return this.#pressaoDiastolica; }
   get hemoglobina() { return this.#hemoglobina; }
 
-  estaDentroDosLimites(sexo) {
+  // RN-02 e RN-06: lista os valores fora dos limites
+  listarAlteracoes(sexo) {
+    const motivos = [];
     const hb = HEMOGLOBINA[sexo];
-    return (
-      this.#peso >= PESO_MINIMO &&
-      this.#hemoglobina >= hb.min && this.#hemoglobina <= hb.max &&
-      this.#pressaoSistolica >= SISTOLICA.min && this.#pressaoSistolica <= SISTOLICA.max &&
-      this.#pressaoDiastolica >= DIASTOLICA.min && this.#pressaoDiastolica <= DIASTOLICA.max
-    );
+    const foraDa = (valor, faixa) => valor < faixa.min || valor > faixa.max;
+
+    if (this.#peso < PESO_MINIMO) {
+      motivos.push(`Peso de ${fmt(this.#peso)} kg abaixo do mínimo de ${PESO_MINIMO} kg (RN-02).`);
+    }
+    if (foraDa(this.#hemoglobina, hb)) {
+      motivos.push(`Hemoglobina de ${fmt(this.#hemoglobina)} g/dL fora da faixa de ${fmt(hb.min)} a ${fmt(hb.max)} g/dL (RN-06).`);
+    }
+    if (foraDa(this.#pressaoSistolica, SISTOLICA) || foraDa(this.#pressaoDiastolica, DIASTOLICA)) {
+      motivos.push(
+        `Pressão de ${this.#pressaoSistolica}x${this.#pressaoDiastolica} mmHg fora da faixa de ` +
+        `${SISTOLICA.min}-${SISTOLICA.max} x ${DIASTOLICA.min}-${DIASTOLICA.max} mmHg (RN-06).`,
+      );
+    }
+
+    return motivos;
+  }
+
+  estaDentroDosLimites(sexo) {
+    return this.listarAlteracoes(sexo).length === 0;
   }
 
   toJSON() {
