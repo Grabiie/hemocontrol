@@ -118,7 +118,8 @@ Doador
 -----------------------------------
 + validarCpf(): boolean
 + calcularIdade(dataReferencia: Date): int
-+ podeDoarEm(data: Date): boolean
++ listarImpedimentos(data: Date, datasDoacoes: List<Date>): List<String>
++ podeDoarEm(data: Date, datasDoacoes: List<Date>): boolean
 ```
 
 ```
@@ -129,6 +130,7 @@ MedicaoClinica
 - pressaoDiastolica: int
 - hemoglobina: double
 -----------------------------------
++ listarAlteracoes(sexo: Sexo): List<String>
 + estaDentroDosLimites(sexo: Sexo): boolean
 ```
 
@@ -138,9 +140,11 @@ Triagem
 - id: int
 - dataHora: Date
 - apto: boolean = false
+- motivos: List<String>
 -----------------------------------
-+ avaliar(): boolean
++ avaliar(datasDoacoes: List<Date>): boolean
 + estaApta(): boolean
++ getMotivos(): List<String>
 ```
 
 ```
