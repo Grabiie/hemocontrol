@@ -26,9 +26,14 @@ export class Triagem {
   get doador() { return this.#doador; }
   get medicao() { return this.#medicao; }
 
-  // RN-02, RN-03 e RN-06
-  avaliar(datasDoacoes = []) {
+  // RN-02, RN-03, RN-06 e inaptidões temporárias vigentes (RF-11)
+  avaliar(datasDoacoes = [], inaptidoes = []) {
+    const vigentes = inaptidoes
+      .filter((i) => i.estaVigente(this.#dataHora))
+      .map((i) => `Inaptidão temporária até ${i.dataFim.toLocaleDateString('pt-BR')}: ${i.motivo} (RF-11).`);
+
     this.#motivos = [
+      ...vigentes,
       ...this.#doador.listarImpedimentos(this.#dataHora, datasDoacoes),
       ...this.#medicao.listarAlteracoes(this.#doador.sexo),
     ];
