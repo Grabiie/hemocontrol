@@ -10,10 +10,26 @@
   <header>
     <h1>HemoControl</h1>
     <p>Gestão de banco de sangue</p>
+    <div class="usuario-logado" id="usuario-logado" hidden>
+      <span id="nome-usuario"></span>
+      <span class="perfil" id="perfil-usuario"></span>
+      <button type="button" class="sair" id="botao-sair">Sair</button>
+    </div>
   </header>
 
-  <main>
-    <section class="painel" id="painel-doador">
+  <section class="painel login" id="tela-login" hidden>
+    <h2>Entrar</h2>
+    <form id="form-login">
+      <label>Usuário <input name="login" required autocomplete="username"></label>
+      <label>Senha <input name="senha" type="password" required autocomplete="current-password"></label>
+      <button type="submit">Entrar</button>
+    </form>
+    <p class="mensagem" id="msg-login"></p>
+    <p class="dica">Contas de demonstração: <code>recepcao</code>, <code>medico</code>, <code>enfermeiro</code> e <code>gestor</code>, com a senha <code>hemo123</code>.</p>
+  </section>
+
+  <main id="sistema" hidden>
+    <section class="painel" id="painel-doador" data-perfis="RECEPCIONISTA">
       <h2><span class="passo">1</span> Cadastrar doador</h2>
       <form id="form-doador">
         <label>Nome <input name="nome" required></label>
@@ -42,7 +58,7 @@
       <p class="mensagem" id="msg-doador"></p>
     </section>
 
-    <section class="painel" id="painel-triagem">
+    <section class="painel" id="painel-triagem" data-perfis="MEDICO ENFERMEIRO">
       <h2><span class="passo">2</span> Realizar triagem</h2>
       <form id="form-triagem">
         <label>CPF do doador <input name="cpf" required placeholder="000.000.000-00" inputmode="numeric" maxlength="14" autocomplete="off"></label>
@@ -59,7 +75,7 @@
       <p class="mensagem" id="msg-triagem"></p>
     </section>
 
-    <section class="painel" id="painel-doacao">
+    <section class="painel" id="painel-doacao" data-perfis="ENFERMEIRO">
       <h2><span class="passo">3</span> Registrar doação</h2>
       <form id="form-doacao">
         <label>Nº da triagem <input name="triagemId" type="number" required></label>
@@ -69,7 +85,7 @@
       <p class="mensagem" id="msg-doacao"></p>
     </section>
 
-    <section class="painel largo" id="painel-estoque">
+    <section class="painel largo" id="painel-estoque" data-perfis="GESTOR">
       <h2>Estoque por tipo sanguíneo</h2>
       <p class="legenda">Alerta quando há menos de <strong id="limite"></strong> bolsas disponíveis.</p>
       <div class="grade" id="grade-estoque"></div>

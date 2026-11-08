@@ -43,7 +43,8 @@ async function enviar(url, dados) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dados),
   });
-  const corpo = await resposta.json();
+  if (resposta.status === 401) mostrarLogin();
+  const corpo = resposta.status === 204 ? {} : await resposta.json();
   if (!resposta.ok) throw new Error(corpo.erro ?? 'Erro inesperado.');
   return corpo;
 }
@@ -96,7 +97,7 @@ document.getElementById('form-doacao').addEventListener('submit', async (e) => {
     const { bolsa } = await enviar('/api/doacoes', dadosDoForm(e.target));
     const validade = new Date(bolsa.dataValidade).toLocaleDateString('pt-BR');
     mostrar('msg-doacao', `Bolsa ${bolsa.codigo} (${TIPOS[bolsa.tipoSanguineo]}) gerada, válida até ${validade}.`, 'sucesso');
-    await atualizarEstoque(bolsa.tipoSanguineo);
+    e.target.triagemId.value = '';
   } catch (erro) {
     mostrar('msg-doacao', erro.message, 'erro');
   }
@@ -104,7 +105,9 @@ document.getElementById('form-doacao').addEventListener('submit', async (e) => {
 
 // Estoque
 async function atualizarEstoque(tipoDestacado) {
-  const { limiteCritico, tipos } = await (await fetch('/api/estoque')).json();
+  const resposta = await fetch('/api/estoque');
+  if (!resposta.ok) return;
+  const { limiteCritico, tipos } = await resposta.json();
   document.getElementById('limite').textContent = limiteCritico;
 
   const grade = document.getElementById('grade-estoque');
@@ -124,4 +127,59 @@ async function atualizarEstoque(tipoDestacado) {
   }
 }
 
-atualizarEstoque();
+// ---------- Login e perfis (RF-01) ----------
+
+const ROTULO_PERFIL = {
+  RECEPCIONISTA: 'Recepcionista',
+  MEDICO: 'Médico',
+  ENFERMEIRO: 'Enfermeiro',
+  GESTOR: 'Gestor',
+};
+
+function mostrarLogin() {
+  document.getElementById('sistema').hidden = true;
+  document.getElementById('usuario-logado').hidden = true;
+  document.getElementById('tela-login').hidden = false;
+}
+
+function mostrarSistema(usuario) {
+  document.getElementById('nome-usuario').textContent = usuario.nome;
+  document.getElementById('perfil-usuario').textContent = ROTULO_PERFIL[usuario.perfil];
+  document.getElementById('usuario-logado').hidden = false;
+  document.getElementById('tela-login').hidden = true;
+
+  // Cada perfil vê apenas os painéis que tem permissão para usar
+  document.querySelectorAll('[data-perfis]').forEach((painel) => {
+    painel.hidden = !painel.dataset.perfis.split(' ').includes(usuario.perfil);
+  });
+  document.querySelectorAll('#sistema .mensagem').forEach((m) => { m.textContent = ''; });
+  document.getElementById('sistema').hidden = false;
+
+  if (usuario.perfil === 'GESTOR') atualizarEstoque();
+}
+
+document.getElementById('form-login').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const usuario = await enviar('/api/login', dadosDoForm(e.target));
+    e.target.reset();
+    mostrar('msg-login', '', '');
+    mostrarSistema(usuario);
+  } catch (erro) {
+    mostrar('msg-login', erro.message, 'erro');
+  }
+});
+
+document.getElementById('botao-sair').addEventListener('click', async () => {
+  await enviar('/api/logout', {});
+  document.querySelectorAll('#sistema form').forEach((f) => f.reset());
+  mostrarLogin();
+});
+
+async function iniciar() {
+  const resposta = await fetch('/api/sessao');
+  if (resposta.ok) mostrarSistema(await resposta.json());
+  else mostrarLogin();
+}
+
+iniciar();
