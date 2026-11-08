@@ -107,6 +107,13 @@ test('RF-03: triagem inapta informa todos os motivos', () => {
   assert.match(motivos.join(' '), /Hemoglobina/);
 });
 
+test('RF-03: motivo do intervalo usa singular e "hoje" corretamente', () => {
+  const d = doador();
+  assert.match(d.listarImpedimentos(HOJE, [somarDias(HOJE, -1)])[0], /há 1 dia;/);
+  assert.match(d.listarImpedimentos(HOJE, [HOJE])[0], /Última doação hoje;/);
+  assert.match(d.listarImpedimentos(HOJE, [somarDias(HOJE, -30)])[0], /há 30 dias;/);
+});
+
 test('RF-03: triagem apta não tem motivos', () => {
   const triagem = new Triagem({ doador: doador(), medicao: medicaoNormal, dataHora: HOJE });
   assert.equal(triagem.avaliar(), true);

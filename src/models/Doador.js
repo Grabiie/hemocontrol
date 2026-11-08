@@ -89,7 +89,11 @@ export class Doador {
       const intervalo = INTERVALO_DIAS[this.#sexo];
       const diasDesdeUltima = diasEntre(ultima, data);
       if (diasDesdeUltima < intervalo) {
-        motivos.push(`Última doação há ${diasDesdeUltima} dias; o intervalo mínimo é de ${intervalo} dias (RN-03).`);
+        const quando =
+          diasDesdeUltima === 0 ? 'hoje' :
+          diasDesdeUltima === 1 ? 'há 1 dia' :
+          `há ${diasDesdeUltima} dias`;
+        motivos.push(`Última doação ${quando}; o intervalo mínimo é de ${intervalo} dias (RN-03).`);
       }
 
       const limite = LIMITE_ANUAL[this.#sexo];
