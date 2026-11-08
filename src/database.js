@@ -9,6 +9,17 @@ export const db = new Database(caminho);
 db.pragma('foreign_keys = ON');
 
 db.exec(`
+  -- Uma tabela para toda a hierarquia de Usuario; a coluna "perfil" indica a subclasse
+  CREATE TABLE IF NOT EXISTS usuario (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    cpf TEXT NOT NULL,
+    login TEXT NOT NULL UNIQUE,
+    senha_hash TEXT NOT NULL,              -- RNF-02
+    perfil TEXT NOT NULL,                  -- RECEPCIONISTA, GESTOR, MEDICO ou ENFERMEIRO
+    registro_profissional TEXT             -- CRM do médico ou COREN do enfermeiro
+  );
+
   CREATE TABLE IF NOT EXISTS doador (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,

@@ -3,11 +3,14 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import { Doador } from './models/Doador.js';
-import { Triagem } from './models/Triagem.js';
-import { Doacao } from './models/Doacao.js';
 import { Estoque } from './models/Estoque.js';
+import { Recepcionista } from './models/Recepcionista.js';
+import { ProfissionalDeSaude } from './models/ProfissionalDeSaude.js';
+import { Enfermeiro } from './models/Enfermeiro.js';
+import { Gestor } from './models/Gestor.js';
 import { TipoSanguineo, ROTULO_TIPO } from './models/enums.js';
 import * as repo from './repositorios.js';
+import { carregarUsuario, exigir, iniciarSessao, encerrarSessao } from './sessoes.js';
 
 const app = express();
 const PORTA = process.env.PORT ?? 3000;
@@ -15,32 +18,54 @@ const pastaPublica = path.join(path.dirname(fileURLToPath(import.meta.url)), '..
 
 app.use(express.json());
 app.use(express.static(pastaPublica));
+app.use(carregarUsuario);
 
-// RF-02 — Cadastrar doador
-app.post('/api/doadores', (req, res) => {
+// RF-01 — Autenticar usuário
+app.post('/api/login', (req, res) => {
+  const { login, senha } = req.body ?? {};
+  const usuario = repo.buscarUsuarioPorLogin(login);
+  if (!usuario || !usuario.autenticar(login, senha)) {
+    return res.status(401).json({ erro: 'Usuário ou senha inválidos.' });
+  }
+  iniciarSessao(res, usuario);
+  res.json(usuario);
+});
+
+app.post('/api/logout', (req, res) => {
+  encerrarSessao(req, res);
+  res.status(204).end();
+});
+
+app.get('/api/sessao', (req, res) => {
+  if (!req.usuario) return res.status(401).json({ erro: 'Nenhuma sessão ativa.' });
+  res.json(req.usuario);
+});
+
+// RF-02 — Cadastrar doador (Recepcionista)
+app.post('/api/doadores', exigir(Recepcionista), (req, res) => {
   const doador = repo.salvarDoador(new Doador(req.body));
   res.status(201).json(doador);
 });
 
-app.get('/api/doadores/:cpf', (req, res) => {
+app.get('/api/doadores/:cpf', exigir(Recepcionista, ProfissionalDeSaude), (req, res) => {
   const doador = repo.buscarDoadorPorCpf(req.params.cpf);
   if (!doador) return res.status(404).json({ erro: 'Doador não encontrado.' });
   res.json(doador);
 });
 
-// RF-03 — Realizar triagem
-app.post('/api/triagens', (req, res) => {
+// RF-03 — Realizar triagem (Profissional de Saúde: Médico ou Enfermeiro)
+app.post('/api/triagens', exigir(ProfissionalDeSaude), (req, res) => {
   const { cpf, ...medicao } = req.body;
   const doador = repo.buscarDoadorPorCpf(cpf ?? '');
   if (!doador) return res.status(404).json({ erro: 'Doador não cadastrado.' });
 
-  const triagem = new Triagem({ doador, medicao });
+  const triagem = req.usuario.realizarTriagem(doador, medicao);
   triagem.avaliar(repo.datasDoacoesDoDoador(doador.id));
   res.status(201).json(repo.salvarTriagem(triagem));
 });
 
-// RF-04 — Registrar doação (gera a bolsa e inclui no estoque)
-app.post('/api/doacoes', (req, res) => {
+// RF-04 — Registrar doação (Enfermeiro)
+app.post('/api/doacoes', exigir(Enfermeiro), (req, res) => {
   const { triagemId, volumeMl } = req.body;
   const triagem = repo.buscarTriagem(Number(triagemId));
   if (!triagem) return res.status(404).json({ erro: 'Triagem não encontrada.' });
@@ -48,14 +73,14 @@ app.post('/api/doacoes', (req, res) => {
     return res.status(409).json({ erro: 'Esta triagem já possui uma doação registrada.' });
   }
 
-  const doacao = new Doacao({ triagem, volumeMl });
+  const doacao = req.usuario.registrarDoacao(triagem, volumeMl);
   const bolsa = doacao.gerarBolsa();
   const id = repo.salvarDoacaoComBolsa(doacao, bolsa);
   res.status(201).json({ id, bolsa });
 });
 
-// RF-05 e RF-06 — Consultar estoque com alerta de estoque crítico
-app.get('/api/estoque', (req, res) => {
+// RF-05 e RF-06 — Consultar estoque com alerta de estoque crítico (Gestor)
+app.get('/api/estoque', exigir(Gestor), (req, res) => {
   const estoque = repo.carregarEstoque();
   const resumo = Object.values(TipoSanguineo).map((tipo) => ({
     tipo,
@@ -70,6 +95,9 @@ app.get('/api/estoque', (req, res) => {
 app.use((erro, req, res, next) => {
   res.status(400).json({ erro: erro.message });
 });
+
+const criados = repo.garantirUsuariosDemo();
+if (criados > 0) console.log(`${criados} contas de demonstração criadas (senha: ${repo.SENHA_DEMO}).`);
 
 app.listen(PORTA, () => {
   console.log(`HemoControl rodando em http://localhost:${PORTA}`);

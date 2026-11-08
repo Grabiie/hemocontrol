@@ -1,9 +1,9 @@
-// Popula o estoque com bolsas de exemplo para demonstração.
+// Cria as contas de demonstração e popula o estoque com bolsas de exemplo.
 // Uso: npm run seed
 import { BolsaSangue } from './models/BolsaSangue.js';
 import { TipoSanguineo } from './models/enums.js';
 import { somarDias } from './models/datas.js';
-import { salvarBolsaAvulsa } from './repositorios.js';
+import { salvarBolsaAvulsa, garantirUsuariosDemo, SENHA_DEMO } from './repositorios.js';
 
 // Quantidade por tipo: alguns acima e outros abaixo do limite crítico
 const quantidades = {
@@ -27,3 +27,6 @@ for (const [tipo, quantidade] of Object.entries(quantidades)) {
 }
 
 console.log(`${total} bolsas de exemplo adicionadas ao estoque.`);
+
+const criados = garantirUsuariosDemo();
+if (criados > 0) console.log(`${criados} contas de demonstração criadas (senha: ${SENHA_DEMO}).`);
