@@ -103,43 +103,100 @@ document.getElementById('form-doacao').addEventListener('submit', async (e) => {
   }
 });
 
-// Estoque
-async function atualizarEstoque(tipoDestacado) {
+// ---------- Utilitários de exibição ----------
+
+const ROTULO_STATUS = { DISPONIVEL: 'Disponível', ENTREGUE: 'Entregue', DESCARTADA: 'Descartada' };
+const NOMES_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
+  'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+const formatarData = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
+const plural = (n, singular, pluralTexto) => `${n} ${n === 1 ? singular : pluralTexto}`;
+
+function criar(tag, classe, texto) {
+  const el = document.createElement(tag);
+  if (classe) el.className = classe;
+  if (texto !== undefined) el.textContent = texto;
+  return el;
+}
+
+// Monta uma tabela só com textContent (sem HTML vindo de dados)
+function criarTabela(colunas, linhas, rolagem = false) {
+  const tabela = criar('table', 'tabela');
+  const cabecalho = tabela.createTHead().insertRow();
+  for (const c of colunas) cabecalho.appendChild(criar('th', null, c));
+  const corpo = tabela.createTBody();
+  for (const valores of linhas) {
+    const linha = corpo.insertRow();
+    for (const v of valores) linha.insertCell().textContent = v;
+  }
+  if (!rolagem) return tabela;
+  const caixa = criar('div', 'rolagem');
+  caixa.appendChild(tabela);
+  return caixa;
+}
+
+function criarCartoes(itens) {
+  const grade = criar('div', 'cartoes');
+  for (const [numero, descricao] of itens) {
+    const card = criar('div', 'total');
+    card.append(criar('div', 'numero', numero), criar('div', 'descricao', descricao));
+    grade.appendChild(card);
+  }
+  return grade;
+}
+
+// ---------- Estoque e bolsas vencidas (RF-05, RF-06, RF-09) ----------
+
+async function atualizarEstoque() {
   const resposta = await fetch('/api/estoque');
   if (!resposta.ok) return;
   const { limiteCritico, vencidas, tipos } = await resposta.json();
   document.getElementById('limite').textContent = limiteCritico;
 
-  document.getElementById('info-vencidas').textContent =
-    vencidas === 0 ? 'Nenhuma bolsa vencida no estoque.' :
-    vencidas === 1 ? '1 bolsa vencida aguardando descarte.' :
-    `${vencidas} bolsas vencidas aguardando descarte.`;
-  document.getElementById('botao-descartar').disabled = vencidas === 0;
-
   const grade = document.getElementById('grade-estoque');
   grade.innerHTML = '';
   for (const t of tipos) {
-    const card = document.createElement('div');
-    card.className = `tipo${t.critico ? ' critico' : ''}${t.tipo === tipoDestacado ? ' atualizado' : ''}`;
-    card.innerHTML = `
-      <div class="rotulo">${t.rotulo}</div>
-      <div class="quantidade">${t.quantidade} bolsa${t.quantidade === 1 ? '' : 's'}</div>
-      <div class="status">${t.critico ? 'ESTOQUE CRÍTICO' : 'Normal'}</div>`;
+    const card = criar('div', `tipo${t.critico ? ' critico' : ''}`);
+    card.append(
+      criar('div', 'rotulo', t.rotulo),
+      criar('div', 'quantidade', plural(t.quantidade, 'bolsa', 'bolsas')),
+      criar('div', 'status', t.critico ? 'ESTOQUE CRÍTICO' : 'Normal'),
+    );
     grade.appendChild(card);
   }
 
-  if (tipoDestacado) {
-    setTimeout(() => grade.querySelector('.atualizado')?.classList.remove('atualizado'), 800);
-  }
+  const botao = document.getElementById('botao-descartar');
+  const area = document.getElementById('area-vencidas');
+  botao.disabled = vencidas === 0;
+  botao.textContent = vencidas === 0 ? 'Descartar bolsas vencidas' : `Descartar ${plural(vencidas, 'bolsa vencida', 'bolsas vencidas')}`;
+  document.getElementById('info-vencidas').textContent =
+    vencidas === 0 ? 'Nenhuma bolsa vencida no estoque.' : 'Confira a lista antes de descartar.';
+
+  area.hidden = vencidas === 0;
+  if (vencidas > 0) await listarVencidas();
 }
 
-// ---------- Descarte de bolsas vencidas (RF-09) ----------
+async function listarVencidas() {
+  const resposta = await fetch('/api/estoque/vencidas');
+  if (!resposta.ok) return;
+  const bolsas = await resposta.json();
+  const hoje = new Date();
+
+  const linhas = bolsas.map((b) => {
+    const dias = Math.floor((hoje - new Date(b.dataValidade)) / 86400000);
+    return [b.codigo, TIPOS[b.tipoSanguineo], formatarData(b.dataColeta), formatarData(b.dataValidade),
+      dias <= 0 ? 'hoje' : plural(dias, 'dia', 'dias')];
+  });
+
+  const destino = document.getElementById('tabela-vencidas');
+  destino.innerHTML = '';
+  destino.appendChild(criarTabela(['Bolsa', 'Tipo', 'Coleta', 'Validade', 'Vencida há'], linhas, true));
+}
 
 document.getElementById('botao-descartar').addEventListener('click', async () => {
   try {
-    const { quantidade } = await enviar('/api/estoque/descarte', {});
-    const texto = quantidade === 1 ? '1 bolsa vencida descartada.' : `${quantidade} bolsas vencidas descartadas.`;
-    mostrar('msg-estoque', texto, 'sucesso');
+    const { quantidade, codigos } = await enviar('/api/estoque/descarte', {});
+    mostrar('msg-estoque', `${plural(quantidade, 'bolsa descartada', 'bolsas descartadas')}: ${codigos.join(', ')}.`, 'sucesso');
     await atualizarEstoque();
   } catch (erro) {
     mostrar('msg-estoque', erro.message, 'erro');
@@ -148,43 +205,111 @@ document.getElementById('botao-descartar').addEventListener('click', async () =>
 
 // ---------- Relatório mensal (RF-10) ----------
 
-const NOMES_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
-  'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+let ultimoRelatorio = null;
 
 document.getElementById('form-relatorio').addEventListener('submit', async (e) => {
   e.preventDefault();
   const [ano, mes] = e.target.mes.value.split('-');
   const resultado = document.getElementById('resultado-relatorio');
   resultado.innerHTML = '';
+  document.getElementById('botoes-exportar').hidden = true;
+  mostrar('msg-relatorio', '', '');
+
   try {
     const resposta = await fetch(`/api/relatorios/${ano}/${mes}`);
     const r = await resposta.json();
+    if (resposta.status === 401) mostrarLogin();
     if (!resposta.ok) throw new Error(r.erro ?? 'Erro ao gerar o relatório.');
 
-    mostrar('msg-relatorio', `Relatório de ${NOMES_MESES[r.mes - 1]} de ${r.ano}`, '');
-    const totais = [
-      [r.totalDoacoes, 'doações'],
-      [r.totalBolsasDescartadas, 'bolsas descartadas'],
-      [r.totalSolicitacoesAtendidas, 'solicitações atendidas'],
-    ];
-    for (const [numero, descricao] of totais) {
-      const card = document.createElement('div');
-      card.className = 'total';
-      card.innerHTML = `<div class="numero">${numero}</div><div class="descricao">${descricao}</div>`;
-      resultado.appendChild(card);
-    }
-    const obs = document.createElement('p');
-    obs.className = 'observacao';
-    obs.textContent = 'As solicitações de hospitais ainda não foram implementadas.';
-    resultado.appendChild(obs);
+    ultimoRelatorio = r;
+    renderizarRelatorio(r, resultado);
+    document.getElementById('botoes-exportar').hidden = false;
   } catch (erro) {
     mostrar('msg-relatorio', erro.message, 'erro');
   }
 });
 
-// ---------- Histórico de doações (RF-12) ----------
+function renderizarRelatorio(r, destino) {
+  const geradoEm = new Date(r.geradoEm);
+  destino.append(
+    criar('h3', null, `Relatório de ${NOMES_MESES[r.mes - 1]} de ${r.ano}`),
+    criar('p', 'meta-relatorio',
+      `Gerado em ${geradoEm.toLocaleDateString('pt-BR')} às ${geradoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} por ${r.geradoPor}`),
+    criarCartoes([
+      [r.totalDoacoes, 'doações registradas'],
+      [r.totalBolsasDescartadas, 'bolsas descartadas'],
+      [r.totalSolicitacoesAtendidas, 'solicitações atendidas'],
+    ]),
+  );
 
-const ROTULO_STATUS = { DISPONIVEL: 'Disponível', ENTREGUE: 'Entregue', DESCARTADA: 'Descartada' };
+  destino.append(
+    criar('h3', null, `Destino das ${plural(r.bolsasColetadas.length, 'bolsa coletada', 'bolsas coletadas')} no mês`),
+    criarCartoes([
+      [r.destino.DISPONIVEL, 'em estoque'],
+      [r.destino.ENTREGUE, 'entregues a hospitais'],
+      [r.destino.DESCARTADA, 'descartadas'],
+    ]),
+  );
+
+  destino.appendChild(criar('h3', null, 'Bolsas descartadas no mês'));
+  if (r.bolsasDescartadas.length === 0) {
+    destino.appendChild(criar('p', 'vazio', 'Nenhuma bolsa descartada neste mês.'));
+  } else {
+    destino.appendChild(criarTabela(
+      ['Bolsa', 'Tipo', 'Origem', 'Coleta', 'Validade', 'Descarte'],
+      r.bolsasDescartadas.map((b) => [b.codigo, TIPOS[b.tipoSanguineo], b.origem,
+        formatarData(b.dataColeta), formatarData(b.dataValidade), formatarData(b.dataDescarte)]),
+    ));
+  }
+
+  destino.appendChild(criar('h3', null, 'Bolsas coletadas no mês'));
+  if (r.bolsasColetadas.length === 0) {
+    destino.appendChild(criar('p', 'vazio', 'Nenhuma bolsa coletada neste mês.'));
+  } else {
+    destino.appendChild(criarTabela(
+      ['Bolsa', 'Tipo', 'Volume', 'Origem', 'Coleta', 'Validade', 'Situação'],
+      r.bolsasColetadas.map((b) => [b.codigo, TIPOS[b.tipoSanguineo], `${b.volumeMl} mL`, b.origem,
+        formatarData(b.dataColeta), formatarData(b.dataValidade), ROTULO_STATUS[b.status]]),
+      true,
+    ));
+  }
+
+  destino.appendChild(criar('p', 'observacao',
+    'As solicitações de hospitais (RF-07 e RF-08) ainda não foram implementadas; por isso nenhuma bolsa aparece como entregue.'));
+}
+
+// Exportar PDF: usa a impressão do navegador ("Salvar como PDF") só com o relatório
+document.getElementById('botao-pdf').addEventListener('click', () => {
+  document.body.classList.add('imprimindo-relatorio');
+  window.print();
+});
+window.addEventListener('afterprint', () => document.body.classList.remove('imprimindo-relatorio'));
+
+// Exportar planilha: CSV com ";" e BOM, para abrir direto no Excel em português
+document.getElementById('botao-csv').addEventListener('click', () => {
+  if (!ultimoRelatorio) return;
+  const r = ultimoRelatorio;
+
+  const porCodigo = new Map();
+  for (const b of [...r.bolsasColetadas, ...r.bolsasDescartadas]) porCodigo.set(b.codigo, b);
+
+  const campo = (v) => `"${String(v).replace(/"/g, '""')}"`;
+  const linhas = [
+    ['Bolsa', 'Tipo', 'Volume (mL)', 'Origem', 'Coleta', 'Validade', 'Situação', 'Descarte'],
+    ...[...porCodigo.values()].map((b) => [b.codigo, TIPOS[b.tipoSanguineo], b.volumeMl, b.origem,
+      formatarData(b.dataColeta), formatarData(b.dataValidade), ROTULO_STATUS[b.status],
+      b.dataDescarte ? formatarData(b.dataDescarte) : '']),
+  ];
+  const csv = '﻿' + linhas.map((l) => l.map(campo).join(';')).join('\r\n');
+
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  link.download = `relatorio-hemocontrol-${r.ano}-${String(r.mes).padStart(2, '0')}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+});
+
+// ---------- Histórico de doações (RF-12) ----------
 
 document.getElementById('form-historico').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -266,6 +391,8 @@ function mostrarSistema(usuario) {
 
   document.getElementById('resultado-historico').innerHTML = '';
   document.getElementById('resultado-relatorio').innerHTML = '';
+  document.getElementById('botoes-exportar').hidden = true;
+  ultimoRelatorio = null;
 
   if (usuario.perfil === 'GESTOR') {
     const hoje = new Date();

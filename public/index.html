@@ -95,20 +95,29 @@
       <div id="resultado-historico"></div>
     </section>
 
-    <section class="painel" id="painel-relatorio" data-perfis="GESTOR">
+    <section class="painel largo" id="painel-relatorio" data-perfis="GESTOR">
+      <div class="cabecalho-impressao">HemoControl · Gestão de banco de sangue</div>
       <h2>Relatório mensal</h2>
-      <form id="form-relatorio">
+      <form id="form-relatorio" class="form-linha">
         <label>Mês <input name="mes" type="month" required></label>
         <button type="submit">Gerar relatório</button>
+        <div class="botoes-exportar" id="botoes-exportar" hidden>
+          <button type="button" class="secundario" id="botao-pdf">Exportar PDF</button>
+          <button type="button" class="secundario" id="botao-csv">Exportar planilha (CSV)</button>
+        </div>
       </form>
       <p class="mensagem" id="msg-relatorio"></p>
-      <div class="relatorio" id="resultado-relatorio"></div>
+      <div id="resultado-relatorio"></div>
     </section>
 
     <section class="painel largo" id="painel-estoque" data-perfis="GESTOR">
       <h2>Estoque por tipo sanguíneo</h2>
       <p class="legenda">Alerta quando há menos de <strong id="limite"></strong> bolsas disponíveis.</p>
       <div class="grade" id="grade-estoque"></div>
+      <div id="area-vencidas" hidden>
+        <h3>Bolsas vencidas aguardando descarte</h3>
+        <div id="tabela-vencidas"></div>
+      </div>
       <div class="acoes-estoque">
         <span id="info-vencidas"></span>
         <button type="button" id="botao-descartar">Descartar bolsas vencidas</button>

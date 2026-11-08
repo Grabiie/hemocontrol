@@ -135,7 +135,45 @@ button:hover { filter: brightness(1.1); }
 .tipo .status { margin-top: 6px; font-size: 0.75rem; font-weight: 600; color: var(--verde); }
 .tipo.critico .status { color: var(--vermelho); }
 
-#painel-estoque { order: -1; }
+#painel-estoque { order: -2; }
+#painel-relatorio { order: -1; }
+
+.painel h3 { margin: 20px 0 8px; font-size: 0.95rem; }
+
+#area-vencidas h3 { color: var(--vermelho); }
+
+.form-linha { flex-direction: row; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.form-linha label { min-width: 200px; }
+.form-linha button { margin: 0; padding: 9px 18px; }
+.botoes-exportar { margin-left: auto; display: flex; gap: 8px; }
+button.secundario { background: #fff; color: var(--vermelho); border: 1px solid var(--vermelho); }
+
+.tabela { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.tabela th, .tabela td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--borda); }
+.tabela th { color: var(--suave); font-weight: 600; background: var(--fundo); }
+.rolagem { max-height: 320px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 6px; }
+
+.meta-relatorio { margin: 4px 0 0; font-size: 0.8rem; color: var(--suave); }
+.cartoes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.cartoes .total { border: 1px solid var(--borda); border-radius: 8px; padding: 12px 8px; text-align: center; }
+.cartoes .numero { font-size: 1.6rem; font-weight: 700; }
+.cartoes .descricao { font-size: 0.75rem; color: var(--suave); }
+.observacao { font-size: 0.75rem; color: var(--suave); margin: 14px 0 0; }
+
+.cabecalho-impressao { display: none; }
+
+@media print {
+  body { background: #fff; }
+  header, #tela-login { display: none !important; }
+  body.imprimindo-relatorio main > section:not(#painel-relatorio) { display: none !important; }
+  #painel-relatorio form, #msg-relatorio { display: none !important; }
+  main { display: block; margin: 0; padding: 0; max-width: none; }
+  .painel { border: none; padding: 0; }
+  .cabecalho-impressao { display: block; font-size: 0.8rem; color: var(--suave); margin-bottom: 4px; }
+  .rolagem { max-height: none; overflow: visible; border: none; }
+  .tabela tr { break-inside: avoid; }
+  .cartoes .total { break-inside: avoid; }
+}
 
 .acoes-estoque {
   margin-top: 16px;
