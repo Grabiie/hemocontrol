@@ -18,12 +18,15 @@ export class Doacao {
     }
 
     const volume = Number(volumeMl);
-    if (!Number.isInteger(volume) || volume <= 0) throw new Error('Volume coletado inválido.');
+    if (!Number.isInteger(volume) || volume < 0 || (volume === 0 && !cancelada)) {
+      throw new Error('Volume coletado inválido.');
+    }
 
-    // RN-07: faixa geral e limite pelo peso medido na triagem
+    // RN-07: faixa geral e limite pelo peso medido na triagem.
+    // Numa coleta interrompida (doação cancelada), o volume pode ficar abaixo do mínimo.
     const limitePorPeso = triagem.medicao.calcularVolumeMaximo(triagem.doador.sexo);
     const maximo = Math.min(Doacao.VOLUME_MAXIMO_ML, limitePorPeso);
-    if (volume < Doacao.VOLUME_MINIMO_ML) {
+    if (!cancelada && volume < Doacao.VOLUME_MINIMO_ML) {
       throw new Error(`Volume de ${volume} mL abaixo do mínimo de ${Doacao.VOLUME_MINIMO_ML} mL (RN-07).`);
     }
     if (volume > maximo) {

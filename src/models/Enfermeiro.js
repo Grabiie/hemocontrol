@@ -13,7 +13,9 @@ export class Enfermeiro extends ProfissionalDeSaude {
 
   get coren() { return this.#coren; }
 
-  registrarDoacao(triagem, volumeMl) {
-    return new Doacao({ triagem, volumeMl });
+  // Fluxo alternativo 3a de Registrar Doação: com a coleta interrompida,
+  // a doação é registrada como cancelada e não gera bolsa.
+  registrarDoacao(triagem, volumeMl, coletaInterrompida = false) {
+    return new Doacao({ triagem, volumeMl, cancelada: Boolean(coletaInterrompida) });
   }
 }
