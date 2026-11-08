@@ -206,18 +206,61 @@ export function salvarBolsaAvulsa(bolsa) {
 
 // ---------- Estoque ----------
 
-export function carregarEstoque() {
-  const estoque = new Estoque();
-  db.prepare('SELECT * FROM bolsa_sangue').all().forEach((linha) => {
-    estoque.adicionarBolsa(
+export function listarBolsas() {
+  return db.prepare('SELECT * FROM bolsa_sangue').all().map(
+    (linha) =>
       new BolsaSangue({
         codigo: linha.codigo,
         tipoSanguineo: linha.tipo_sanguineo,
         volumeMl: linha.volume_ml,
         dataColeta: linha.data_coleta,
         status: linha.status,
+        dataDescarte: linha.data_descarte,
       }),
-    );
-  });
+  );
+}
+
+export function carregarEstoque() {
+  const estoque = new Estoque();
+  listarBolsas().forEach((bolsa) => estoque.adicionarBolsa(bolsa));
   return estoque;
+}
+
+// RF-09: grava o novo status e a data de descarte das bolsas
+export const salvarDescartes = db.transaction((bolsas) => {
+  const atualizar = db.prepare('UPDATE bolsa_sangue SET status = ?, data_descarte = ? WHERE codigo = ?');
+  for (const bolsa of bolsas) {
+    atualizar.run(bolsa.status, bolsa.dataDescarte?.toISOString() ?? null, bolsa.codigo);
+  }
+});
+
+// ---------- Relatório e histórico ----------
+
+// Datas de todas as doações não canceladas (RF-10)
+export function datasTodasDoacoes() {
+  return db
+    .prepare('SELECT data_hora FROM doacao WHERE cancelada = 0')
+    .all()
+    .map((linha) => new Date(linha.data_hora));
+}
+
+// RF-12: doações de um doador, da mais recente para a mais antiga
+export function historicoDoacoes(doadorId) {
+  return db
+    .prepare(
+      `SELECT d.id, d.data_hora, d.volume_ml, d.cancelada, b.codigo, b.status, b.data_validade
+       FROM doacao d
+       JOIN triagem t ON t.id = d.triagem_id
+       LEFT JOIN bolsa_sangue b ON b.doacao_id = d.id
+       WHERE t.doador_id = ?
+       ORDER BY d.data_hora DESC`,
+    )
+    .all(doadorId)
+    .map((linha) => ({
+      id: linha.id,
+      dataHora: linha.data_hora,
+      volumeMl: linha.volume_ml,
+      cancelada: linha.cancelada === 1,
+      bolsa: linha.codigo ? { codigo: linha.codigo, status: linha.status, dataValidade: linha.data_validade } : null,
+    }));
 }

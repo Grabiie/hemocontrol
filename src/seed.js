@@ -26,7 +26,14 @@ for (const [tipo, quantidade] of Object.entries(quantidades)) {
   }
 }
 
+// Algumas bolsas já vencidas (coletadas há 40 dias), para demonstrar o descarte (RF-09)
+const vencidas = [TipoSanguineo.A_POSITIVO, TipoSanguineo.O_POSITIVO, TipoSanguineo.B_POSITIVO, TipoSanguineo.O_POSITIVO];
+for (const tipo of vencidas) {
+  salvarBolsaAvulsa(new BolsaSangue({ tipoSanguineo: tipo, volumeMl: 450, dataColeta: somarDias(new Date(), -40) }));
+}
+
 console.log(`${total} bolsas de exemplo adicionadas ao estoque.`);
+console.log(`${vencidas.length} bolsas vencidas adicionadas para demonstrar o descarte.`);
 
 const criados = garantirUsuariosDemo();
 if (criados > 0) console.log(`${criados} contas de demonstração criadas (senha: ${SENHA_DEMO}).`);

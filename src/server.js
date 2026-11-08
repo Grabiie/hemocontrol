@@ -8,6 +8,7 @@ import { Recepcionista } from './models/Recepcionista.js';
 import { ProfissionalDeSaude } from './models/ProfissionalDeSaude.js';
 import { Enfermeiro } from './models/Enfermeiro.js';
 import { Gestor } from './models/Gestor.js';
+import { Usuario } from './models/Usuario.js';
 import { TipoSanguineo, ROTULO_TIPO } from './models/enums.js';
 import * as repo from './repositorios.js';
 import { carregarUsuario, exigir, iniciarSessao, encerrarSessao } from './sessoes.js';
@@ -53,6 +54,13 @@ app.get('/api/doadores/:cpf', exigir(Recepcionista, ProfissionalDeSaude), (req, 
   res.json(doador);
 });
 
+// RF-12 — Consultar histórico de doações (todos os perfis autenticados)
+app.get('/api/doadores/:cpf/historico', exigir(Usuario), (req, res) => {
+  const doador = repo.buscarDoadorPorCpf(req.params.cpf);
+  if (!doador) return res.status(404).json({ erro: 'Doador não encontrado.' });
+  res.json({ doador, doacoes: repo.historicoDoacoes(doador.id) });
+});
+
 // RF-03 — Realizar triagem (Profissional de Saúde: Médico ou Enfermeiro)
 app.post('/api/triagens', exigir(ProfissionalDeSaude), (req, res) => {
   const { cpf, ...medicao } = req.body;
@@ -88,7 +96,27 @@ app.get('/api/estoque', exigir(Gestor), (req, res) => {
     quantidade: estoque.consultarDisponiveis(tipo).length,
     critico: estoque.estaCritico(tipo),
   }));
-  res.json({ limiteCritico: Estoque.LIMITE_CRITICO, tipos: resumo });
+  res.json({
+    limiteCritico: Estoque.LIMITE_CRITICO,
+    vencidas: estoque.listarVencidas().length,
+    tipos: resumo,
+  });
+});
+
+// RF-09 — Descartar bolsas vencidas (Gestor)
+app.post('/api/estoque/descarte', exigir(Gestor), (req, res) => {
+  const estoque = repo.carregarEstoque();
+  const vencidas = estoque.listarVencidas();
+  const quantidade = req.usuario.descartarBolsasVencidas(estoque);
+  repo.salvarDescartes(vencidas);
+  res.json({ quantidade });
+});
+
+// RF-10 — Gerar relatório mensal (Gestor)
+app.get('/api/relatorios/:ano/:mes', exigir(Gestor), (req, res) => {
+  const relatorio = req.usuario.gerarRelatorioMensal(req.params.mes, req.params.ano);
+  relatorio.calcularTotais(repo.datasTodasDoacoes(), repo.listarBolsas());
+  res.json(relatorio);
 });
 
 // Erros de regra de negócio viram respostas 400 com mensagem legível

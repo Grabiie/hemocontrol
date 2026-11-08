@@ -59,7 +59,8 @@ db.exec(`
     volume_ml INTEGER NOT NULL,
     data_coleta TEXT NOT NULL,
     data_validade TEXT NOT NULL,
-    status TEXT NOT NULL
+    status TEXT NOT NULL,
+    data_descarte TEXT                     -- preenchida quando a bolsa é descartada (RF-09)
   );
 `);
 
@@ -67,4 +68,9 @@ db.exec(`
 const colunasTriagem = db.prepare('PRAGMA table_info(triagem)').all().map((c) => c.name);
 if (!colunasTriagem.includes('motivos')) {
   db.exec(`ALTER TABLE triagem ADD COLUMN motivos TEXT NOT NULL DEFAULT '[]'`);
+}
+
+const colunasBolsa = db.prepare('PRAGMA table_info(bolsa_sangue)').all().map((c) => c.name);
+if (!colunasBolsa.includes('data_descarte')) {
+  db.exec('ALTER TABLE bolsa_sangue ADD COLUMN data_descarte TEXT');
 }
