@@ -52,11 +52,24 @@ npm start
 
 O servidor sobe em `http://localhost:3000`.
 
-Para popular o estoque com bolsas de exemplo (útil para demonstração):
+Para criar as contas de demonstração e popular o estoque com bolsas de exemplo:
 
 ```bash
 npm run seed
 ```
+
+### Contas de demonstração
+
+Todas usam a senha `hemo123`. Cada perfil só acessa as funções que o diagrama de casos de uso atribui a ele.
+
+| Usuário | Perfil | Pode fazer |
+|---|---|---|
+| `recepcao` | Recepcionista | Cadastrar doador |
+| `medico` | Médico | Realizar triagem |
+| `enfermeiro` | Enfermeiro | Realizar triagem e registrar doação |
+| `gestor` | Gestor | Consultar estoque |
+
+As contas também são criadas automaticamente na primeira vez que o servidor sobe.
 
 Para rodar os testes das regras de negócio:
 
@@ -74,6 +87,7 @@ hemocontrol/
 │   ├── models/        # classes de domínio do diagrama de classes
 │   ├── database.js    # criação das tabelas SQLite
 │   ├── repositorios.js# leitura e gravação no banco
+│   ├── sessoes.js     # login, sessões e permissões por perfil
 │   ├── seed.js        # dados de exemplo
 │   └── server.js      # API REST com Express
 ├── test/              # testes das regras de negócio
@@ -98,11 +112,11 @@ Em desenvolvimento. Implementação inicial focada no fluxo principal do banco d
 - [x] Requisitos
 - [x] Diagrama de casos de uso
 - [x] Diagrama de classes
+- [x] Autenticação por perfil com senha em hash (RF-01, RNF-02)
 - [x] Cadastro de doadores (RF-02, RN-01)
 - [x] Triagem com critérios de aptidão (RF-03, RN-02, RN-03, RN-06)
 - [x] Registro de doação e geração de bolsa (RF-04, RN-04, RN-05)
 - [x] Consulta de estoque com alerta de estoque crítico (RF-05, RF-06)
-- [ ] Autenticação por perfil (RF-01)
 - [ ] Solicitações de hospitais (RF-07, RF-08)
 - [ ] Descarte de bolsas vencidas e relatório mensal (RF-09, RF-10)
 - [ ] Registro de inaptidão temporária (RF-11)
