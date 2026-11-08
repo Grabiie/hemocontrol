@@ -76,6 +76,13 @@ document.getElementById('form-triagem').addEventListener('submit', async (e) => 
     if (triagem.apto) {
       mostrar('msg-triagem', `Triagem nº ${triagem.id}: doador APTO.`, 'sucesso');
       document.querySelector('#form-doacao [name=triagemId]').value = triagem.id;
+
+      // RN-07: ajusta o campo de volume ao máximo permitido para este doador
+      const campoVolume = document.querySelector('#form-doacao [name=volumeMl]');
+      campoVolume.max = triagem.volumeMaximoMl;
+      campoVolume.value = Math.min(450, triagem.volumeMaximoMl);
+      document.getElementById('dica-volume').textContent =
+        `Máximo para este doador: ${triagem.volumeMaximoMl} mL (mínimo de 300 mL).`;
     } else {
       mostrar('msg-triagem', `Triagem nº ${triagem.id}: doador INAPTO.`, 'erro');
       const lista = document.createElement('ul');

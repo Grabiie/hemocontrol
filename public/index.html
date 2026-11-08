@@ -79,7 +79,8 @@
       <h2><span class="passo">3</span> Registrar doação</h2>
       <form id="form-doacao">
         <label>Nº da triagem <input name="triagemId" type="number" required></label>
-        <label>Volume coletado (mL) <input name="volumeMl" type="number" value="450" required></label>
+        <label>Volume coletado (mL) <input name="volumeMl" type="number" value="450" min="300" max="495" step="1" required></label>
+        <p class="dica-campo" id="dica-volume">Entre 300 e 495 mL, respeitando o limite pelo peso do doador.</p>
         <button type="submit">Registrar</button>
       </form>
       <p class="mensagem" id="msg-doacao"></p>
