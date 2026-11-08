@@ -40,3 +40,9 @@ export function validarEnum(enumeracao, valor, nomeCampo) {
   }
   return valor;
 }
+
+export const StatusSolicitacao = Object.freeze({
+  PENDENTE: 'PENDENTE',
+  ATENDIDA: 'ATENDIDA',
+  ATENDIDA_PARCIALMENTE: 'ATENDIDA_PARCIALMENTE',
+});

@@ -27,10 +27,9 @@ export class RelatorioMensal {
     return data instanceof Date && data.getMonth() + 1 === this.#mes && data.getFullYear() === this.#ano;
   }
 
-  // As solicitações (RF-07 e RF-08) ainda não foram implementadas,
-  // então o total de solicitações atendidas permanece zero.
-  calcularTotais(datasDoacoes = [], bolsas = []) {
+  calcularTotais(datasDoacoes = [], bolsas = [], datasAtendimentos = []) {
     this.#totalDoacoes = datasDoacoes.filter((d) => this.#pertenceAoMes(d)).length;
+    this.#totalSolicitacoesAtendidas = datasAtendimentos.filter((d) => this.#pertenceAoMes(d)).length;
     this.#totalBolsasDescartadas = bolsas.filter(
       (b) => b.status === StatusBolsa.DESCARTADA && this.#pertenceAoMes(b.dataDescarte),
     ).length;
