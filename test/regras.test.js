@@ -119,3 +119,25 @@ test('RF-03: triagem apta não tem motivos', () => {
   assert.equal(triagem.avaliar(), true);
   assert.deepEqual(triagem.getMotivos(), []);
 });
+
+test('RN-07: volume máximo é de 8 mL/kg para mulheres e 9 mL/kg para homens', () => {
+  const medicao = new MedicaoClinica({ ...medicaoNormal, peso: 52 });
+  assert.equal(medicao.calcularVolumeMaximo('FEMININO'), 416);
+  assert.equal(medicao.calcularVolumeMaximo('MASCULINO'), 468);
+});
+
+test('RN-07: doação recusa volume abaixo de 300 mL ou acima de 495 mL', () => {
+  const triagem = new Triagem({ doador: doador(), medicao: { ...medicaoNormal, peso: 80 }, dataHora: HOJE });
+  triagem.avaliar();
+  assert.throws(() => new Doacao({ triagem, volumeMl: 299 }), /abaixo do mínimo de 300 mL/);
+  assert.throws(() => new Doacao({ triagem, volumeMl: 600 }), /máximo permitido para este doador: 495 mL/);
+  assert.equal(new Doacao({ triagem, volumeMl: 495 }).volumeMl, 495);
+});
+
+test('RN-07: doação recusa volume acima do limite pelo peso do doador', () => {
+  const triagem = new Triagem({ doador: doador(), medicao: { ...medicaoNormal, peso: 52 }, dataHora: HOJE });
+  triagem.avaliar();
+  assert.throws(() => new Doacao({ triagem, volumeMl: 450 }), /máximo permitido para este doador: 416 mL/);
+  assert.equal(new Doacao({ triagem, volumeMl: 416 }).volumeMl, 416);
+  assert.equal(triagem.toJSON().volumeMaximoMl, 416);
+});

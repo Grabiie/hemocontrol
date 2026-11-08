@@ -11,6 +11,9 @@ const HEMOGLOBINA = {
 const SISTOLICA = { min: 90, max: 180 };
 const DIASTOLICA = { min: 60, max: 100 };
 
+// RN-07: volume máximo de coleta por quilo de peso
+const ML_POR_KG = { [Sexo.MASCULINO]: 9, [Sexo.FEMININO]: 8 };
+
 const fmt = (n) => n.toLocaleString('pt-BR');
 
 // Parte da composição Triagem ◆ MedicaoClinica:
@@ -59,6 +62,11 @@ export class MedicaoClinica {
     }
 
     return motivos;
+  }
+
+  // RN-07: no máximo 9 mL/kg (homens) ou 8 mL/kg (mulheres) do peso medido
+  calcularVolumeMaximo(sexo) {
+    return Math.floor(this.#peso * ML_POR_KG[sexo]);
   }
 
   estaDentroDosLimites(sexo) {

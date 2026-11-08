@@ -1,6 +1,10 @@
 import { BolsaSangue } from './BolsaSangue.js';
 
 export class Doacao {
+  // RN-07: faixa de volume admitida por doação (450 mL ± 45 mL; abaixo de 300 mL a bolsa é desprezada)
+  static VOLUME_MINIMO_ML = 300;
+  static VOLUME_MAXIMO_ML = 495;
+
   #id;
   #dataHora;
   #volumeMl;
@@ -15,6 +19,16 @@ export class Doacao {
 
     const volume = Number(volumeMl);
     if (!Number.isInteger(volume) || volume <= 0) throw new Error('Volume coletado inválido.');
+
+    // RN-07: faixa geral e limite pelo peso medido na triagem
+    const limitePorPeso = triagem.medicao.calcularVolumeMaximo(triagem.doador.sexo);
+    const maximo = Math.min(Doacao.VOLUME_MAXIMO_ML, limitePorPeso);
+    if (volume < Doacao.VOLUME_MINIMO_ML) {
+      throw new Error(`Volume de ${volume} mL abaixo do mínimo de ${Doacao.VOLUME_MINIMO_ML} mL (RN-07).`);
+    }
+    if (volume > maximo) {
+      throw new Error(`Volume de ${volume} mL acima do máximo permitido para este doador: ${maximo} mL (RN-07).`);
+    }
 
     this.#id = id;
     this.#triagem = triagem;

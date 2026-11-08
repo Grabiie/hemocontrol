@@ -1,4 +1,5 @@
 import { MedicaoClinica } from './MedicaoClinica.js';
+import { Doacao } from './Doacao.js';
 
 export class Triagem {
   #id;
@@ -49,6 +50,8 @@ export class Triagem {
       dataHora: this.#dataHora.toISOString(),
       apto: this.#apto,
       motivos: [...this.#motivos],
+      // RN-07: volume máximo que pode ser coletado deste doador
+      volumeMaximoMl: Math.min(Doacao.VOLUME_MAXIMO_ML, this.#medicao.calcularVolumeMaximo(this.#doador.sexo)),
       doador: this.#doador.toJSON(),
       medicao: this.#medicao.toJSON(),
     };
