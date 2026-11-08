@@ -103,20 +103,48 @@ app.get('/api/estoque', exigir(Gestor), (req, res) => {
   });
 });
 
+// RF-09 — Listar as bolsas vencidas antes do descarte (Gestor)
+app.get('/api/estoque/vencidas', exigir(Gestor), (req, res) => {
+  res.json(repo.carregarEstoque().listarVencidas());
+});
+
 // RF-09 — Descartar bolsas vencidas (Gestor)
 app.post('/api/estoque/descarte', exigir(Gestor), (req, res) => {
   const estoque = repo.carregarEstoque();
   const vencidas = estoque.listarVencidas();
   const quantidade = req.usuario.descartarBolsasVencidas(estoque);
   repo.salvarDescartes(vencidas);
-  res.json({ quantidade });
+  res.json({ quantidade, codigos: vencidas.map((b) => b.codigo) });
 });
 
-// RF-10 — Gerar relatório mensal (Gestor)
+// RF-10 — Gerar relatório mensal com o destino de cada bolsa (Gestor)
 app.get('/api/relatorios/:ano/:mes', exigir(Gestor), (req, res) => {
   const relatorio = req.usuario.gerarRelatorioMensal(req.params.mes, req.params.ano);
   relatorio.calcularTotais(repo.datasTodasDoacoes(), repo.listarBolsas());
-  res.json(relatorio);
+
+  const noMes = (data) =>
+    data instanceof Date && data.getMonth() + 1 === relatorio.mes && data.getFullYear() === relatorio.ano;
+  const linha = ({ bolsa, doacaoId }) => ({
+    ...bolsa.toJSON(),
+    origem: doacaoId ? `Doação nº ${doacaoId}` : 'Estoque inicial',
+  });
+
+  const bolsas = repo.listarBolsasComOrigem();
+  const coletadas = bolsas.filter(({ bolsa }) => noMes(bolsa.dataColeta));
+  const descartadas = bolsas.filter(({ bolsa }) => bolsa.status === 'DESCARTADA' && noMes(bolsa.dataDescarte));
+
+  // Para onde foram as bolsas coletadas no mês
+  const destino = { DISPONIVEL: 0, ENTREGUE: 0, DESCARTADA: 0 };
+  coletadas.forEach(({ bolsa }) => { destino[bolsa.status]++; });
+
+  res.json({
+    ...relatorio.toJSON(),
+    geradoEm: new Date().toISOString(),
+    geradoPor: req.usuario.getNome(),
+    destino,
+    bolsasColetadas: coletadas.map(linha),
+    bolsasDescartadas: descartadas.map(linha),
+  });
 });
 
 // Erros de regra de negócio viram respostas 400 com mensagem legível

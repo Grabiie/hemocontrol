@@ -236,6 +236,30 @@ export const salvarDescartes = db.transaction((bolsas) => {
 
 // ---------- Relatório e histórico ----------
 
+// Bolsas com a doação que as originou, para o detalhamento do relatório (RF-10).
+// Bolsas sem doação são as do estoque inicial criado pelo seed.
+export function listarBolsasComOrigem() {
+  return db
+    .prepare(
+      `SELECT b.*, d.id AS doacao_id_origem
+       FROM bolsa_sangue b
+       LEFT JOIN doacao d ON d.id = b.doacao_id
+       ORDER BY b.data_coleta`,
+    )
+    .all()
+    .map((linha) => ({
+      bolsa: new BolsaSangue({
+        codigo: linha.codigo,
+        tipoSanguineo: linha.tipo_sanguineo,
+        volumeMl: linha.volume_ml,
+        dataColeta: linha.data_coleta,
+        status: linha.status,
+        dataDescarte: linha.data_descarte,
+      }),
+      doacaoId: linha.doacao_id_origem,
+    }));
+}
+
 // Datas de todas as doações não canceladas (RF-10)
 export function datasTodasDoacoes() {
   return db
