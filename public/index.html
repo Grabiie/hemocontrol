@@ -85,10 +85,35 @@
       <p class="mensagem" id="msg-doacao"></p>
     </section>
 
+    <section class="painel" id="painel-historico" data-perfis="RECEPCIONISTA MEDICO ENFERMEIRO GESTOR">
+      <h2>Histórico de doações</h2>
+      <form id="form-historico">
+        <label>CPF do doador <input name="cpf" required placeholder="000.000.000-00" inputmode="numeric" maxlength="14" autocomplete="off"></label>
+        <button type="submit">Consultar</button>
+      </form>
+      <p class="mensagem" id="msg-historico"></p>
+      <div id="resultado-historico"></div>
+    </section>
+
+    <section class="painel" id="painel-relatorio" data-perfis="GESTOR">
+      <h2>Relatório mensal</h2>
+      <form id="form-relatorio">
+        <label>Mês <input name="mes" type="month" required></label>
+        <button type="submit">Gerar relatório</button>
+      </form>
+      <p class="mensagem" id="msg-relatorio"></p>
+      <div class="relatorio" id="resultado-relatorio"></div>
+    </section>
+
     <section class="painel largo" id="painel-estoque" data-perfis="GESTOR">
       <h2>Estoque por tipo sanguíneo</h2>
       <p class="legenda">Alerta quando há menos de <strong id="limite"></strong> bolsas disponíveis.</p>
       <div class="grade" id="grade-estoque"></div>
+      <div class="acoes-estoque">
+        <span id="info-vencidas"></span>
+        <button type="button" id="botao-descartar">Descartar bolsas vencidas</button>
+      </div>
+      <p class="mensagem" id="msg-estoque"></p>
     </section>
   </main>
 

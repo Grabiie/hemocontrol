@@ -107,8 +107,14 @@ document.getElementById('form-doacao').addEventListener('submit', async (e) => {
 async function atualizarEstoque(tipoDestacado) {
   const resposta = await fetch('/api/estoque');
   if (!resposta.ok) return;
-  const { limiteCritico, tipos } = await resposta.json();
+  const { limiteCritico, vencidas, tipos } = await resposta.json();
   document.getElementById('limite').textContent = limiteCritico;
+
+  document.getElementById('info-vencidas').textContent =
+    vencidas === 0 ? 'Nenhuma bolsa vencida no estoque.' :
+    vencidas === 1 ? '1 bolsa vencida aguardando descarte.' :
+    `${vencidas} bolsas vencidas aguardando descarte.`;
+  document.getElementById('botao-descartar').disabled = vencidas === 0;
 
   const grade = document.getElementById('grade-estoque');
   grade.innerHTML = '';
@@ -126,6 +132,109 @@ async function atualizarEstoque(tipoDestacado) {
     setTimeout(() => grade.querySelector('.atualizado')?.classList.remove('atualizado'), 800);
   }
 }
+
+// ---------- Descarte de bolsas vencidas (RF-09) ----------
+
+document.getElementById('botao-descartar').addEventListener('click', async () => {
+  try {
+    const { quantidade } = await enviar('/api/estoque/descarte', {});
+    const texto = quantidade === 1 ? '1 bolsa vencida descartada.' : `${quantidade} bolsas vencidas descartadas.`;
+    mostrar('msg-estoque', texto, 'sucesso');
+    await atualizarEstoque();
+  } catch (erro) {
+    mostrar('msg-estoque', erro.message, 'erro');
+  }
+});
+
+// ---------- Relatório mensal (RF-10) ----------
+
+const NOMES_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
+  'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+document.getElementById('form-relatorio').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const [ano, mes] = e.target.mes.value.split('-');
+  const resultado = document.getElementById('resultado-relatorio');
+  resultado.innerHTML = '';
+  try {
+    const resposta = await fetch(`/api/relatorios/${ano}/${mes}`);
+    const r = await resposta.json();
+    if (!resposta.ok) throw new Error(r.erro ?? 'Erro ao gerar o relatório.');
+
+    mostrar('msg-relatorio', `Relatório de ${NOMES_MESES[r.mes - 1]} de ${r.ano}`, '');
+    const totais = [
+      [r.totalDoacoes, 'doações'],
+      [r.totalBolsasDescartadas, 'bolsas descartadas'],
+      [r.totalSolicitacoesAtendidas, 'solicitações atendidas'],
+    ];
+    for (const [numero, descricao] of totais) {
+      const card = document.createElement('div');
+      card.className = 'total';
+      card.innerHTML = `<div class="numero">${numero}</div><div class="descricao">${descricao}</div>`;
+      resultado.appendChild(card);
+    }
+    const obs = document.createElement('p');
+    obs.className = 'observacao';
+    obs.textContent = 'As solicitações de hospitais ainda não foram implementadas.';
+    resultado.appendChild(obs);
+  } catch (erro) {
+    mostrar('msg-relatorio', erro.message, 'erro');
+  }
+});
+
+// ---------- Histórico de doações (RF-12) ----------
+
+const ROTULO_STATUS = { DISPONIVEL: 'Disponível', ENTREGUE: 'Entregue', DESCARTADA: 'Descartada' };
+
+document.getElementById('form-historico').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const resultado = document.getElementById('resultado-historico');
+  resultado.innerHTML = '';
+  mostrar('msg-historico', '', '');
+
+  const cpf = e.target.cpf.value.replace(/\D/g, '');
+  try {
+    const resposta = await fetch(`/api/doadores/${cpf}/historico`);
+    const dados = await resposta.json();
+    if (resposta.status === 401) mostrarLogin();
+    if (!resposta.ok) throw new Error(dados.erro ?? 'Erro ao consultar o histórico.');
+
+    const { doador, doacoes } = dados;
+    const cabecalho = document.createElement('p');
+    cabecalho.className = 'historico-doador';
+    cabecalho.textContent = `${doador.nome} · tipo ${TIPOS[doador.tipoSanguineo]} · ` +
+      (doacoes.length === 1 ? '1 doação' : `${doacoes.length} doações`);
+    resultado.appendChild(cabecalho);
+
+    if (doacoes.length === 0) {
+      resultado.appendChild(Object.assign(document.createElement('p'), {
+        className: 'vazio', textContent: 'Nenhuma doação registrada.',
+      }));
+      return;
+    }
+
+    const tabela = document.createElement('table');
+    tabela.className = 'historico';
+    tabela.innerHTML = '<thead><tr><th>Data</th><th>Volume</th><th>Bolsa</th><th>Situação</th></tr></thead>';
+    const corpo = document.createElement('tbody');
+    for (const d of doacoes) {
+      const linha = corpo.insertRow();
+      const situacao = d.cancelada ? 'Cancelada' : ROTULO_STATUS[d.bolsa?.status] ?? '—';
+      for (const valor of [
+        new Date(d.dataHora).toLocaleDateString('pt-BR'),
+        `${d.volumeMl} mL`,
+        d.bolsa?.codigo ?? '—',
+        situacao,
+      ]) {
+        linha.insertCell().textContent = valor;
+      }
+    }
+    tabela.appendChild(corpo);
+    resultado.appendChild(tabela);
+  } catch (erro) {
+    mostrar('msg-historico', erro.message, 'erro');
+  }
+});
 
 // ---------- Login e perfis (RF-01) ----------
 
@@ -155,7 +264,15 @@ function mostrarSistema(usuario) {
   document.querySelectorAll('#sistema .mensagem').forEach((m) => { m.textContent = ''; });
   document.getElementById('sistema').hidden = false;
 
-  if (usuario.perfil === 'GESTOR') atualizarEstoque();
+  document.getElementById('resultado-historico').innerHTML = '';
+  document.getElementById('resultado-relatorio').innerHTML = '';
+
+  if (usuario.perfil === 'GESTOR') {
+    const hoje = new Date();
+    document.querySelector('#form-relatorio [name=mes]').value =
+      `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    atualizarEstoque();
+  }
 }
 
 document.getElementById('form-login').addEventListener('submit', async (e) => {

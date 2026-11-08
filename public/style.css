@@ -135,6 +135,32 @@ button:hover { filter: brightness(1.1); }
 .tipo .status { margin-top: 6px; font-size: 0.75rem; font-weight: 600; color: var(--verde); }
 .tipo.critico .status { color: var(--vermelho); }
 
+#painel-estoque { order: -1; }
+
+.acoes-estoque {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  font-size: 0.9rem;
+  color: var(--suave);
+}
+.acoes-estoque button { margin: 0; padding: 8px 16px; }
+.acoes-estoque button:disabled { background: var(--borda); color: var(--suave); cursor: default; filter: none; }
+
+.relatorio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.relatorio .total { border: 1px solid var(--borda); border-radius: 8px; padding: 12px 8px; text-align: center; }
+.relatorio .numero { font-size: 1.6rem; font-weight: 700; }
+.relatorio .descricao { font-size: 0.75rem; color: var(--suave); }
+.relatorio .observacao { grid-column: 1 / -1; font-size: 0.75rem; color: var(--suave); margin: 0; }
+
+.historico-doador { margin: 12px 0 8px; font-size: 0.9rem; }
+.historico { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.historico th, .historico td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--borda); }
+.historico th { color: var(--suave); font-weight: 600; }
+.vazio { font-size: 0.9rem; color: var(--suave); }
+
 @media (max-width: 900px) {
   main { grid-template-columns: 1fr; }
   .grade { grid-template-columns: repeat(4, 1fr); }
