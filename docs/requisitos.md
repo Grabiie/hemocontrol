@@ -38,11 +38,11 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-09
 **Nome:** Descartar bolsas vencidas
-**Descrição:** O sistema deve permitir que o gestor registre o descarte das bolsas cuja validade tenha expirado, retirando-as do estoque disponível.
+**Descrição:** O sistema deve listar as bolsas cuja validade tenha expirado e permitir que o gestor registre o descarte delas, retirando-as do estoque disponível.
 
 ### RF-10
 **Nome:** Gerar relatório mensal
-**Descrição:** O sistema deve permitir que o gestor gere, para um mês escolhido, um relatório com o total de doações, bolsas descartadas e solicitações atendidas.
+**Descrição:** O sistema deve permitir que o gestor gere, para um mês escolhido, um relatório com o total de doações, bolsas descartadas e solicitações atendidas, detalhando o destino de cada bolsa (em estoque, entregue ou descartada), com exportação em PDF e em planilha.
 
 ### RF-11
 **Nome:** Registrar inaptidão temporária

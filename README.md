@@ -118,8 +118,8 @@ Em desenvolvimento. Implementação inicial focada no fluxo principal do banco d
 - [x] Registro de doação e geração de bolsa (RF-04, RN-04, RN-05)
 - [x] Consulta de estoque com alerta de estoque crítico (RF-05, RF-06)
 - [ ] Solicitações de hospitais (RF-07, RF-08)
-- [x] Descarte de bolsas vencidas (RF-09)
-- [x] Relatório mensal (RF-10)
+- [x] Listagem e descarte de bolsas vencidas (RF-09)
+- [x] Relatório mensal com destino das bolsas e exportação em PDF e CSV (RF-10)
 - [x] Histórico de doações por doador (RF-12)
 - [ ] Registro de inaptidão temporária (RF-11)
 
