@@ -73,6 +73,14 @@
         <button type="submit">Avaliar</button>
       </form>
       <p class="mensagem" id="msg-triagem"></p>
+
+      <form id="form-inaptidao" class="subformulario" hidden>
+        <h3>Registrar inaptidão temporária</h3>
+        <label>Motivo <textarea name="motivo" rows="3" required></textarea></label>
+        <label>Prazo (dias) <input name="prazoDias" type="number" min="1" max="365" value="30" required></label>
+        <button type="submit">Registrar inaptidão</button>
+      </form>
+      <p class="mensagem" id="msg-inaptidao"></p>
     </section>
 
     <section class="painel" id="painel-doacao" data-perfis="ENFERMEIRO">
@@ -81,6 +89,10 @@
         <label>Nº da triagem <input name="triagemId" type="number" required></label>
         <label>Volume coletado (mL) <input name="volumeMl" type="number" value="450" min="300" max="495" step="1" required></label>
         <p class="dica-campo" id="dica-volume">Entre 300 e 495 mL, respeitando o limite pelo peso do doador.</p>
+        <label class="check">
+          <input type="checkbox" name="coletaInterrompida">
+          Coleta interrompida (registrar a doação como cancelada)
+        </label>
         <button type="submit">Registrar</button>
       </form>
       <p class="mensagem" id="msg-doacao"></p>
@@ -94,6 +106,18 @@
       </form>
       <p class="mensagem" id="msg-historico"></p>
       <div id="resultado-historico"></div>
+    </section>
+
+    <section class="painel largo" id="painel-solicitacoes" data-perfis="GESTOR">
+      <h2>Solicitações de hospitais</h2>
+      <form id="form-solicitacao" class="form-linha">
+        <label>Hospital <select name="hospitalId" id="select-hospital" required></select></label>
+        <label class="estreito">Tipo <select name="tipoSanguineo" id="select-tipo-solicitacao" required></select></label>
+        <label class="estreito">Quantidade <input name="quantidade" type="number" min="1" max="50" value="2" required></label>
+        <button type="submit">Registrar solicitação</button>
+      </form>
+      <p class="mensagem" id="msg-solicitacao"></p>
+      <div id="lista-solicitacoes"></div>
     </section>
 
     <section class="painel largo" id="painel-relatorio" data-perfis="GESTOR">

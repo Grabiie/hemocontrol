@@ -137,8 +137,27 @@ button:hover { filter: brightness(1.1); }
 .tipo .status { margin-top: 6px; font-size: 0.75rem; font-weight: 600; color: var(--verde); }
 .tipo.critico .status { color: var(--vermelho); }
 
-#painel-estoque { order: -2; }
+#painel-estoque { order: -3; }
+#painel-solicitacoes { order: -2; }
 #painel-relatorio { order: -1; }
+
+.subformulario {
+  margin-top: 14px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--borda);
+}
+.subformulario h3 { margin: 10px 0 2px; }
+textarea { font: inherit; color: var(--texto); padding: 8px 10px; border: 1px solid var(--borda); border-radius: 6px; resize: vertical; }
+
+.form-linha label.estreito { min-width: 110px; flex: 0 0 auto; }
+.tabela td button { margin: 0; padding: 4px 12px; font-size: 0.8rem; }
+.selo { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+.selo.pendente { background: #fff4e0; color: #8a5300; }
+.selo.atendida { background: var(--verde-claro); color: var(--verde); }
+.selo.parcial { background: #e8f0fb; color: #1f4f8c; }
+.acao-parcial { margin-top: 8px; display: flex; gap: 10px; align-items: center; }
+.acao-parcial button { margin: 0; padding: 6px 14px; }
+.alerta-inaptidao { margin: 8px 0; padding: 8px 10px; border-radius: 6px; background: var(--vermelho-claro); color: var(--vermelho); font-size: 0.85rem; }
 
 .painel h3 { margin: 20px 0 8px; font-size: 0.95rem; }
 
@@ -153,6 +172,9 @@ button.secundario { background: #fff; color: var(--vermelho); border: 1px solid 
 .tabela { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .tabela th, .tabela td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--borda); }
 .tabela th { color: var(--suave); font-weight: 600; background: var(--fundo); }
+.tabela td, .tabela th { white-space: nowrap; }
+.rolagem { overflow-x: auto; }
+#lista-solicitacoes { margin-top: 8px; }
 .rolagem { max-height: 320px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 6px; }
 
 .meta-relatorio { margin: 4px 0 0; font-size: 0.8rem; color: var(--suave); }

@@ -3,6 +3,8 @@ const TIPOS = {
   AB_POSITIVO: 'AB+', AB_NEGATIVO: 'AB-', O_POSITIVO: 'O+', O_NEGATIVO: 'O-',
 };
 
+let usuarioAtual = null;
+
 const selectTipo = document.getElementById('select-tipo');
 for (const [valor, rotulo] of Object.entries(TIPOS)) {
   selectTipo.add(new Option(rotulo, valor));
@@ -90,6 +92,9 @@ document.getElementById('form-doador').addEventListener('submit', async (e) => {
 // 2. Realizar triagem
 document.getElementById('form-triagem').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const formInaptidao = document.getElementById('form-inaptidao');
+  formInaptidao.hidden = true;
+  mostrar('msg-inaptidao', '', '');
   try {
     const triagem = await enviar('/api/triagens', dadosDoForm(e.target));
     if (triagem.apto) {
@@ -110,9 +115,30 @@ document.getElementById('form-triagem').addEventListener('submit', async (e) => 
         lista.appendChild(Object.assign(document.createElement('li'), { textContent: motivo }));
       }
       document.getElementById('msg-triagem').appendChild(lista);
+
+      // RF-11 (<<extend>> de Realizar Triagem): só o médico registra a inaptidão temporária
+      if (usuarioAtual?.perfil === 'MEDICO') {
+        formInaptidao.dataset.triagemId = triagem.id;
+        formInaptidao.motivo.value = triagem.motivos.map((m) => m.replace(/\s*\((RN|RF)-\d+\)\.?$/, '')).join('; ');
+        formInaptidao.prazoDias.value = 30;
+        formInaptidao.hidden = false;
+      }
     }
   } catch (erro) {
     mostrar('msg-triagem', erro.message, 'erro');
+  }
+});
+
+// RF-11 — Registrar inaptidão temporária (Médico)
+document.getElementById('form-inaptidao').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const inaptidao = await enviar(`/api/triagens/${e.target.dataset.triagemId}/inaptidao`, dadosDoForm(e.target));
+    mostrar('msg-inaptidao',
+      `Inaptidão registrada. O doador não poderá doar até ${new Date(inaptidao.dataFim).toLocaleDateString('pt-BR')}.`, 'sucesso');
+    e.target.hidden = true;
+  } catch (erro) {
+    mostrar('msg-inaptidao', erro.message, 'erro');
   }
 });
 
@@ -120,10 +146,18 @@ document.getElementById('form-triagem').addEventListener('submit', async (e) => 
 document.getElementById('form-doacao').addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
-    const { bolsa } = await enviar('/api/doacoes', dadosDoForm(e.target));
-    const validade = new Date(bolsa.dataValidade).toLocaleDateString('pt-BR');
-    mostrar('msg-doacao', `Bolsa ${bolsa.codigo} (${TIPOS[bolsa.tipoSanguineo]}) gerada, válida até ${validade}.`, 'sucesso');
+    const dados = dadosDoForm(e.target);
+    dados.coletaInterrompida = e.target.coletaInterrompida.checked;
+    const { id, cancelada, bolsa } = await enviar('/api/doacoes', dados);
+    if (cancelada) {
+      mostrar('msg-doacao', `Doação nº ${id} registrada como cancelada (coleta interrompida). Nenhuma bolsa foi gerada.`, 'sucesso');
+    } else {
+      const validade = new Date(bolsa.dataValidade).toLocaleDateString('pt-BR');
+      mostrar('msg-doacao', `Bolsa ${bolsa.codigo} (${TIPOS[bolsa.tipoSanguineo]}) gerada, válida até ${validade}.`, 'sucesso');
+    }
     e.target.triagemId.value = '';
+    e.target.coletaInterrompida.checked = false;
+    e.target.volumeMl.min = 300;
   } catch (erro) {
     mostrar('msg-doacao', erro.message, 'erro');
   }
@@ -170,6 +204,11 @@ function criarCartoes(itens) {
   }
   return grade;
 }
+
+// Coleta interrompida: o volume pode ficar abaixo de 300 mL
+document.querySelector('#form-doacao [name=coletaInterrompida]').addEventListener('change', (e) => {
+  document.querySelector('#form-doacao [name=volumeMl]').min = e.target.checked ? 0 : 300;
+});
 
 // ---------- Estoque e bolsas vencidas (RF-05, RF-06, RF-09) ----------
 
@@ -226,6 +265,109 @@ document.getElementById('botao-descartar').addEventListener('click', async () =>
     await atualizarEstoque();
   } catch (erro) {
     mostrar('msg-estoque', erro.message, 'erro');
+  }
+});
+
+// ---------- Solicitações de hospitais (RF-07, RF-08) ----------
+
+const ROTULO_SOLICITACAO = {
+  PENDENTE: ['Pendente', 'pendente'],
+  ATENDIDA: ['Atendida', 'atendida'],
+  ATENDIDA_PARCIALMENTE: ['Atendida parcialmente', 'parcial'],
+};
+
+const selectTipoSolicitacao = document.getElementById('select-tipo-solicitacao');
+for (const [valor, rotulo] of Object.entries(TIPOS)) selectTipoSolicitacao.add(new Option(rotulo, valor));
+
+async function carregarHospitais() {
+  const resposta = await fetch('/api/hospitais');
+  if (!resposta.ok) return;
+  const select = document.getElementById('select-hospital');
+  select.innerHTML = '';
+  for (const h of await resposta.json()) select.add(new Option(h.nome, h.id));
+}
+
+async function atualizarSolicitacoes() {
+  const resposta = await fetch('/api/solicitacoes');
+  if (!resposta.ok) return;
+  const solicitacoes = await resposta.json();
+  const destino = document.getElementById('lista-solicitacoes');
+  destino.innerHTML = '';
+
+  if (solicitacoes.length === 0) {
+    destino.appendChild(criar('p', 'vazio', 'Nenhuma solicitação registrada.'));
+    return;
+  }
+
+  const tabela = criarTabela(['Nº', 'Data', 'Hospital', 'Tipo', 'Pedido', 'Origem', 'Situação', ''], []);
+  const corpo = tabela.tBodies[0];
+  for (const s of solicitacoes) {
+    const linha = corpo.insertRow();
+    const [rotulo, classe] = ROTULO_SOLICITACAO[s.status];
+    const situacao = s.status === 'PENDENTE'
+      ? `${rotulo} · ${plural(s.disponiveis, 'disponível', 'disponíveis')} no estoque`
+      : `${rotulo} · ${s.quantidadeAtendida} de ${s.quantidade}`;
+
+    for (const valor of [s.id, formatarData(s.dataSolicitacao), s.hospital.nome, TIPOS[s.tipoSanguineo],
+      plural(s.quantidade, 'bolsa', 'bolsas'), s.origemManual ? 'Manual' : 'Integração']) {
+      linha.insertCell().textContent = valor;
+    }
+    const celulaSituacao = linha.insertCell();
+    celulaSituacao.appendChild(criar('span', `selo ${classe}`, situacao));
+
+    const celulaAcao = linha.insertCell();
+    if (s.status === 'PENDENTE') {
+      const botao = criar('button', null, 'Atender');
+      botao.type = 'button';
+      botao.addEventListener('click', () => atenderSolicitacao(s.id, false));
+      celulaAcao.appendChild(botao);
+    }
+  }
+  destino.appendChild(tabela);
+}
+
+// RF-08 — se faltar bolsa, o sistema oferece o atendimento parcial (fluxo alternativo 3a)
+async function atenderSolicitacao(id, aceitaParcial) {
+  const msg = document.getElementById('msg-solicitacao');
+  mostrar('msg-solicitacao', '', '');
+  const resposta = await fetch(`/api/solicitacoes/${id}/atendimento`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ aceitaParcial }),
+  });
+  const r = await resposta.json();
+  if (resposta.status === 401) return mostrarLogin();
+
+  if (!resposta.ok) {
+    mostrar('msg-solicitacao', `Solicitação nº ${id}: ${r.erro}`, 'erro');
+    if (r.podeAtenderParcial) {
+      const acao = criar('div', 'acao-parcial');
+      const botao = criar('button', 'secundario', `Atender parcialmente com ${plural(r.disponiveis, 'bolsa', 'bolsas')}`);
+      botao.type = 'button';
+      botao.addEventListener('click', () => atenderSolicitacao(id, true));
+      acao.appendChild(botao);
+      msg.appendChild(acao);
+    }
+    return;
+  }
+
+  let texto = `Solicitação nº ${r.id} ${r.status === 'ATENDIDA' ? 'atendida' : 'atendida parcialmente'}: ` +
+    `${plural(r.quantidadeAtendida, 'bolsa entregue', 'bolsas entregues')} (${r.bolsas.join(', ')}).`;
+  if (r.estoqueCritico) texto += ` Atenção: o estoque de ${TIPOS[r.tipoSanguineo]} ficou crítico.`;
+  mostrar('msg-solicitacao', texto, 'sucesso');
+  await Promise.all([atualizarSolicitacoes(), atualizarEstoque()]);
+}
+
+// RF-07 — registro manual pelo gestor
+document.getElementById('form-solicitacao').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const s = await enviar('/api/solicitacoes', dadosDoForm(e.target));
+    mostrar('msg-solicitacao',
+      `Solicitação nº ${s.id} registrada: ${plural(s.quantidade, 'bolsa', 'bolsas')} ${TIPOS[s.tipoSanguineo]} para ${s.hospital.nome}.`, 'sucesso');
+    await atualizarSolicitacoes();
+  } catch (erro) {
+    mostrar('msg-solicitacao', erro.message, 'erro');
   }
 });
 
@@ -293,15 +435,13 @@ function renderizarRelatorio(r, destino) {
     destino.appendChild(criar('p', 'vazio', 'Nenhuma bolsa coletada neste mês.'));
   } else {
     destino.appendChild(criarTabela(
-      ['Bolsa', 'Tipo', 'Volume', 'Origem', 'Coleta', 'Validade', 'Situação'],
+      ['Bolsa', 'Tipo', 'Volume', 'Origem', 'Coleta', 'Validade', 'Situação', 'Destino'],
       r.bolsasColetadas.map((b) => [b.codigo, TIPOS[b.tipoSanguineo], `${b.volumeMl} mL`, b.origem,
-        formatarData(b.dataColeta), formatarData(b.dataValidade), ROTULO_STATUS[b.status]]),
+        formatarData(b.dataColeta), formatarData(b.dataValidade), ROTULO_STATUS[b.status], b.destino ?? '—']),
       true,
     ));
   }
 
-  destino.appendChild(criar('p', 'observacao',
-    'As solicitações de hospitais (RF-07 e RF-08) ainda não foram implementadas; por isso nenhuma bolsa aparece como entregue.'));
 }
 
 // Exportar PDF: usa a impressão do navegador ("Salvar como PDF") só com o relatório
@@ -321,10 +461,10 @@ document.getElementById('botao-csv').addEventListener('click', () => {
 
   const campo = (v) => `"${String(v).replace(/"/g, '""')}"`;
   const linhas = [
-    ['Bolsa', 'Tipo', 'Volume (mL)', 'Origem', 'Coleta', 'Validade', 'Situação', 'Descarte'],
+    ['Bolsa', 'Tipo', 'Volume (mL)', 'Origem', 'Coleta', 'Validade', 'Situação', 'Destino', 'Descarte'],
     ...[...porCodigo.values()].map((b) => [b.codigo, TIPOS[b.tipoSanguineo], b.volumeMl, b.origem,
       formatarData(b.dataColeta), formatarData(b.dataValidade), ROTULO_STATUS[b.status],
-      b.dataDescarte ? formatarData(b.dataDescarte) : '']),
+      b.destino ?? '', b.dataDescarte ? formatarData(b.dataDescarte) : '']),
   ];
   const csv = '﻿' + linhas.map((l) => l.map(campo).join(';')).join('\r\n');
 
@@ -350,12 +490,16 @@ document.getElementById('form-historico').addEventListener('submit', async (e) =
     if (resposta.status === 401) mostrarLogin();
     if (!resposta.ok) throw new Error(dados.erro ?? 'Erro ao consultar o histórico.');
 
-    const { doador, doacoes } = dados;
+    const { doador, doacoes, inaptidao } = dados;
     const cabecalho = document.createElement('p');
     cabecalho.className = 'historico-doador';
     cabecalho.textContent = `${doador.nome} · tipo ${TIPOS[doador.tipoSanguineo]} · ` +
       (doacoes.length === 1 ? '1 doação' : `${doacoes.length} doações`);
     resultado.appendChild(cabecalho);
+    if (inaptidao) {
+      resultado.appendChild(criar('p', 'alerta-inaptidao',
+        `Inapto temporariamente até ${formatarData(inaptidao.dataFim)}: ${inaptidao.motivo}`));
+    }
 
     if (doacoes.length === 0) {
       resultado.appendChild(Object.assign(document.createElement('p'), {
@@ -403,6 +547,8 @@ function mostrarLogin() {
 }
 
 function mostrarSistema(usuario) {
+  usuarioAtual = usuario;
+  document.getElementById('form-inaptidao').hidden = true;
   document.getElementById('nome-usuario').textContent = usuario.nome;
   document.getElementById('perfil-usuario').textContent = ROTULO_PERFIL[usuario.perfil];
   document.getElementById('usuario-logado').hidden = false;
@@ -425,6 +571,8 @@ function mostrarSistema(usuario) {
     document.querySelector('#form-relatorio [name=mes]').value =
       `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
     atualizarEstoque();
+    carregarHospitais();
+    atualizarSolicitacoes();
   }
 }
 
