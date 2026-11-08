@@ -3,7 +3,7 @@
 import { BolsaSangue } from './models/BolsaSangue.js';
 import { TipoSanguineo } from './models/enums.js';
 import { somarDias } from './models/datas.js';
-import { salvarBolsaAvulsa, garantirUsuariosDemo, SENHA_DEMO } from './repositorios.js';
+import { salvarBolsaAvulsa, garantirUsuariosDemo, garantirHospitaisDemo, SENHA_DEMO } from './repositorios.js';
 
 // Quantidade por tipo: alguns acima e outros abaixo do limite crítico
 const quantidades = {
@@ -37,3 +37,5 @@ console.log(`${vencidas.length} bolsas vencidas adicionadas para demonstrar o de
 
 const criados = garantirUsuariosDemo();
 if (criados > 0) console.log(`${criados} contas de demonstração criadas (senha: ${SENHA_DEMO}).`);
+
+if (garantirHospitaisDemo() > 0) console.log('Hospitais de demonstração criados (veja as chaves de integração no README).');

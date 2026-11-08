@@ -9,6 +9,8 @@ import { ProfissionalDeSaude } from './models/ProfissionalDeSaude.js';
 import { Enfermeiro } from './models/Enfermeiro.js';
 import { Gestor } from './models/Gestor.js';
 import { Usuario } from './models/Usuario.js';
+import { Medico } from './models/Medico.js';
+import { Solicitacao } from './models/Solicitacao.js';
 import { TipoSanguineo, ROTULO_TIPO } from './models/enums.js';
 import * as repo from './repositorios.js';
 import { carregarUsuario, exigir, iniciarSessao, encerrarSessao } from './sessoes.js';
@@ -58,7 +60,8 @@ app.get('/api/doadores/:cpf', exigir(Recepcionista, ProfissionalDeSaude), (req, 
 app.get('/api/doadores/:cpf/historico', exigir(Usuario), (req, res) => {
   const doador = repo.buscarDoadorPorCpf(req.params.cpf);
   if (!doador) return res.status(404).json({ erro: 'Doador não encontrado.' });
-  res.json({ doador, doacoes: repo.historicoDoacoes(doador.id) });
+  const inaptidao = repo.inaptidoesDoDoador(doador.id).find((i) => i.estaVigente()) ?? null;
+  res.json({ doador, inaptidao, doacoes: repo.historicoDoacoes(doador.id) });
 });
 
 // RF-03 — Realizar triagem (Profissional de Saúde: Médico ou Enfermeiro)
@@ -68,23 +71,37 @@ app.post('/api/triagens', exigir(ProfissionalDeSaude), (req, res) => {
   if (!doador) return res.status(404).json({ erro: 'Doador não cadastrado.' });
 
   const triagem = req.usuario.realizarTriagem(doador, medicao);
-  triagem.avaliar(repo.datasDoacoesDoDoador(doador.id));
+  triagem.avaliar(repo.datasDoacoesDoDoador(doador.id), repo.inaptidoesDoDoador(doador.id));
   res.status(201).json(repo.salvarTriagem(triagem));
+});
+
+// RF-11 — Registrar inaptidão temporária (Médico), estendendo a triagem inapta
+app.post('/api/triagens/:id/inaptidao', exigir(Medico), (req, res) => {
+  const triagem = repo.buscarTriagem(Number(req.params.id));
+  if (!triagem) return res.status(404).json({ erro: 'Triagem não encontrada.' });
+  if (repo.triagemJaPossuiInaptidao(triagem.id)) {
+    return res.status(409).json({ erro: 'Esta triagem já possui uma inaptidão registrada.' });
+  }
+
+  const { motivo, prazoDias } = req.body ?? {};
+  const inaptidao = req.usuario.registrarInaptidao(triagem, motivo, prazoDias);
+  repo.salvarInaptidao(inaptidao, triagem.id, req.usuario.id);
+  res.status(201).json(inaptidao);
 });
 
 // RF-04 — Registrar doação (Enfermeiro)
 app.post('/api/doacoes', exigir(Enfermeiro), (req, res) => {
-  const { triagemId, volumeMl } = req.body;
+  const { triagemId, volumeMl, coletaInterrompida } = req.body;
   const triagem = repo.buscarTriagem(Number(triagemId));
   if (!triagem) return res.status(404).json({ erro: 'Triagem não encontrada.' });
   if (repo.triagemJaPossuiDoacao(triagem.id)) {
     return res.status(409).json({ erro: 'Esta triagem já possui uma doação registrada.' });
   }
 
-  const doacao = req.usuario.registrarDoacao(triagem, volumeMl);
-  const bolsa = doacao.gerarBolsa();
+  const doacao = req.usuario.registrarDoacao(triagem, volumeMl, coletaInterrompida);
+  const bolsa = doacao.gerarBolsa(); // null quando a doação foi cancelada
   const id = repo.salvarDoacaoComBolsa(doacao, bolsa);
-  res.status(201).json({ id, bolsa });
+  res.status(201).json({ id, cancelada: doacao.cancelada, bolsa });
 });
 
 // RF-05 e RF-06 — Consultar estoque com alerta de estoque crítico (Gestor)
@@ -120,13 +137,14 @@ app.post('/api/estoque/descarte', exigir(Gestor), (req, res) => {
 // RF-10 — Gerar relatório mensal com o destino de cada bolsa (Gestor)
 app.get('/api/relatorios/:ano/:mes', exigir(Gestor), (req, res) => {
   const relatorio = req.usuario.gerarRelatorioMensal(req.params.mes, req.params.ano);
-  relatorio.calcularTotais(repo.datasTodasDoacoes(), repo.listarBolsas());
+  relatorio.calcularTotais(repo.datasTodasDoacoes(), repo.listarBolsas(), repo.datasAtendimentos());
 
   const noMes = (data) =>
     data instanceof Date && data.getMonth() + 1 === relatorio.mes && data.getFullYear() === relatorio.ano;
-  const linha = ({ bolsa, doacaoId }) => ({
+  const linha = ({ bolsa, doacaoId, destino }) => ({
     ...bolsa.toJSON(),
     origem: doacaoId ? `Doação nº ${doacaoId}` : 'Estoque inicial',
+    destino,
   });
 
   const bolsas = repo.listarBolsasComOrigem();
@@ -147,11 +165,74 @@ app.get('/api/relatorios/:ano/:mes', exigir(Gestor), (req, res) => {
   });
 });
 
+// ---------- Solicitações de hospitais (RF-07, RF-08, RNF-05) ----------
+
+app.get('/api/hospitais', exigir(Gestor), (req, res) => {
+  res.json(repo.listarHospitais());
+});
+
+app.get('/api/solicitacoes', exigir(Gestor), (req, res) => {
+  const estoque = repo.carregarEstoque();
+  res.json(repo.listarSolicitacoes().map((s) => ({
+    ...s.toJSON(),
+    disponiveis: estoque.consultarDisponiveis(s.tipoSanguineo).length,
+  })));
+});
+
+// RF-07 — Registro manual pelo gestor (quando a integração não está disponível)
+app.post('/api/solicitacoes', exigir(Gestor), (req, res) => {
+  const { hospitalId, tipoSanguineo, quantidade } = req.body ?? {};
+  const hospital = repo.buscarHospitalPorId(Number(hospitalId));
+  if (!hospital) return res.status(404).json({ erro: 'Hospital não encontrado.' });
+
+  const solicitacao = new Solicitacao({ hospital, tipoSanguineo, quantidade, origemManual: true });
+  req.usuario.registrarSolicitacao(solicitacao);
+  res.status(201).json(repo.salvarSolicitacao(solicitacao));
+});
+
+// RF-07 e RNF-05 — Registro pelo sistema do hospital, autenticado pela chave de acesso
+app.post('/api/integracao/solicitacoes', (req, res) => {
+  const chave = req.get('X-Chave-Acesso');
+  if (!chave) return res.status(401).json({ erro: 'Informe a chave de acesso no cabeçalho X-Chave-Acesso (RNF-05).' });
+
+  const hospital = repo.buscarHospitalPorChave(chave);
+  if (!hospital) return res.status(403).json({ erro: 'Chave de acesso inválida (RNF-05).' });
+
+  const { tipoSanguineo, quantidade } = req.body ?? {};
+  const solicitacao = new Solicitacao({ hospital, tipoSanguineo, quantidade, origemManual: false });
+  res.status(201).json(repo.salvarSolicitacao(solicitacao));
+});
+
+// RF-08 — Atender solicitação, priorizando as bolsas de validade mais próxima
+app.post('/api/solicitacoes/:id/atendimento', exigir(Gestor), (req, res) => {
+  const solicitacao = repo.buscarSolicitacao(Number(req.params.id));
+  if (!solicitacao) return res.status(404).json({ erro: 'Solicitação não encontrada.' });
+
+  const estoque = repo.carregarEstoque();
+  const disponiveis = estoque.consultarDisponiveis(solicitacao.tipoSanguineo).length;
+  const aceitaParcial = Boolean(req.body?.aceitaParcial);
+
+  if (!req.usuario.atenderSolicitacao(solicitacao, estoque, aceitaParcial)) {
+    const erro = disponiveis === 0
+      ? 'Não há bolsas disponíveis deste tipo. A solicitação continua pendente.'
+      : `Há apenas ${disponiveis} de ${solicitacao.quantidade} bolsas disponíveis.`;
+    return res.status(409).json({ erro, disponiveis, podeAtenderParcial: disponiveis > 0 });
+  }
+
+  repo.salvarAtendimento(solicitacao);
+  res.json({
+    ...solicitacao.toJSON(),
+    // Fluxo alternativo 2a: alerta de estoque crítico após a baixa (RF-06)
+    estoqueCritico: estoque.estaCritico(solicitacao.tipoSanguineo),
+  });
+});
+
 // Erros de regra de negócio viram respostas 400 com mensagem legível
 app.use((erro, req, res, next) => {
   res.status(400).json({ erro: erro.message });
 });
 
+repo.garantirHospitaisDemo();
 const criados = repo.garantirUsuariosDemo();
 if (criados > 0) console.log(`${criados} contas de demonstração criadas (senha: ${repo.SENHA_DEMO}).`);
 

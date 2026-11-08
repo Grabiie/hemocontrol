@@ -44,6 +44,35 @@ db.exec(`
     motivos TEXT NOT NULL DEFAULT '[]'    -- motivos da inaptidão, em JSON
   );
 
+  -- RF-11: no máximo uma inaptidão por triagem (Triagem 1 — 0..1 InaptidaoTemporaria)
+  CREATE TABLE IF NOT EXISTS inaptidao_temporaria (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    triagem_id INTEGER NOT NULL UNIQUE REFERENCES triagem(id),
+    medico_id INTEGER NOT NULL REFERENCES usuario(id),
+    motivo TEXT NOT NULL,
+    data_inicio TEXT NOT NULL,
+    data_fim TEXT NOT NULL
+  );
+
+  -- Sistema externo que envia solicitações (RF-07, RNF-05)
+  CREATE TABLE IF NOT EXISTS hospital (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    cnpj TEXT NOT NULL UNIQUE,
+    chave_acesso TEXT NOT NULL UNIQUE
+  );
+
+  CREATE TABLE IF NOT EXISTS solicitacao (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hospital_id INTEGER NOT NULL REFERENCES hospital(id),
+    data_solicitacao TEXT NOT NULL,
+    tipo_sanguineo TEXT NOT NULL,
+    quantidade INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    origem_manual INTEGER NOT NULL DEFAULT 0,
+    data_atendimento TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS doacao (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     triagem_id INTEGER NOT NULL UNIQUE REFERENCES triagem(id),  -- Triagem 1 — 0..1 Doacao
@@ -73,4 +102,8 @@ if (!colunasTriagem.includes('motivos')) {
 const colunasBolsa = db.prepare('PRAGMA table_info(bolsa_sangue)').all().map((c) => c.name);
 if (!colunasBolsa.includes('data_descarte')) {
   db.exec('ALTER TABLE bolsa_sangue ADD COLUMN data_descarte TEXT');
+}
+// Solicitacao 0..1 — 0..* BolsaSangue: a bolsa entregue guarda a solicitação que a recebeu (RF-08)
+if (!colunasBolsa.includes('solicitacao_id')) {
+  db.exec('ALTER TABLE bolsa_sangue ADD COLUMN solicitacao_id INTEGER REFERENCES solicitacao(id)');
 }

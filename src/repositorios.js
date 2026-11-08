@@ -8,6 +8,9 @@ import { Gestor } from './models/Gestor.js';
 import { Medico } from './models/Medico.js';
 import { Enfermeiro } from './models/Enfermeiro.js';
 import { gerarHashSenha } from './models/senha.js';
+import { InaptidaoTemporaria } from './models/InaptidaoTemporaria.js';
+import { Hospital } from './models/Hospital.js';
+import { Solicitacao } from './models/Solicitacao.js';
 
 // ---------- Usuário ----------
 
@@ -206,18 +209,19 @@ export function salvarBolsaAvulsa(bolsa) {
 
 // ---------- Estoque ----------
 
+function linhaParaBolsa(linha) {
+  return new BolsaSangue({
+    codigo: linha.codigo,
+    tipoSanguineo: linha.tipo_sanguineo,
+    volumeMl: linha.volume_ml,
+    dataColeta: linha.data_coleta,
+    status: linha.status,
+    dataDescarte: linha.data_descarte,
+  });
+}
+
 export function listarBolsas() {
-  return db.prepare('SELECT * FROM bolsa_sangue').all().map(
-    (linha) =>
-      new BolsaSangue({
-        codigo: linha.codigo,
-        tipoSanguineo: linha.tipo_sanguineo,
-        volumeMl: linha.volume_ml,
-        dataColeta: linha.data_coleta,
-        status: linha.status,
-        dataDescarte: linha.data_descarte,
-      }),
-  );
+  return db.prepare('SELECT * FROM bolsa_sangue').all().map(linhaParaBolsa);
 }
 
 export function carregarEstoque() {
@@ -238,25 +242,22 @@ export const salvarDescartes = db.transaction((bolsas) => {
 
 // Bolsas com a doação que as originou, para o detalhamento do relatório (RF-10).
 // Bolsas sem doação são as do estoque inicial criado pelo seed.
+// Também traz o hospital que recebeu cada bolsa entregue (RF-08).
 export function listarBolsasComOrigem() {
   return db
     .prepare(
-      `SELECT b.*, d.id AS doacao_id_origem
+      `SELECT b.*, d.id AS doacao_id_origem, h.nome AS hospital_destino, s.id AS solicitacao_destino
        FROM bolsa_sangue b
        LEFT JOIN doacao d ON d.id = b.doacao_id
+       LEFT JOIN solicitacao s ON s.id = b.solicitacao_id
+       LEFT JOIN hospital h ON h.id = s.hospital_id
        ORDER BY b.data_coleta`,
     )
     .all()
     .map((linha) => ({
-      bolsa: new BolsaSangue({
-        codigo: linha.codigo,
-        tipoSanguineo: linha.tipo_sanguineo,
-        volumeMl: linha.volume_ml,
-        dataColeta: linha.data_coleta,
-        status: linha.status,
-        dataDescarte: linha.data_descarte,
-      }),
+      bolsa: linhaParaBolsa(linha),
       doacaoId: linha.doacao_id_origem,
+      destino: linha.hospital_destino ? `${linha.hospital_destino} (solicitação nº ${linha.solicitacao_destino})` : null,
     }));
 }
 
@@ -287,4 +288,128 @@ export function historicoDoacoes(doadorId) {
       cancelada: linha.cancelada === 1,
       bolsa: linha.codigo ? { codigo: linha.codigo, status: linha.status, dataValidade: linha.data_validade } : null,
     }));
+}
+
+// ---------- Inaptidão temporária (RF-11) ----------
+
+export function triagemJaPossuiInaptidao(triagemId) {
+  return Boolean(db.prepare('SELECT 1 FROM inaptidao_temporaria WHERE triagem_id = ?').get(triagemId));
+}
+
+export function salvarInaptidao(inaptidao, triagemId, medicoId) {
+  const { lastInsertRowid } = db
+    .prepare(
+      `INSERT INTO inaptidao_temporaria (triagem_id, medico_id, motivo, data_inicio, data_fim)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+    .run(triagemId, medicoId, inaptidao.motivo, inaptidao.dataInicio.toISOString(), inaptidao.dataFim.toISOString());
+  return Number(lastInsertRowid);
+}
+
+export function inaptidoesDoDoador(doadorId) {
+  return db
+    .prepare(
+      `SELECT i.* FROM inaptidao_temporaria i
+       JOIN triagem t ON t.id = i.triagem_id
+       WHERE t.doador_id = ?
+       ORDER BY i.data_fim DESC`,
+    )
+    .all(doadorId)
+    .map((linha) => new InaptidaoTemporaria({
+      id: linha.id, motivo: linha.motivo, dataInicio: linha.data_inicio, dataFim: linha.data_fim,
+    }));
+}
+
+// ---------- Hospitais e solicitações (RF-07, RF-08, RNF-05) ----------
+
+function linhaParaHospital(linha) {
+  return new Hospital({ id: linha.id, nome: linha.nome, cnpj: linha.cnpj, chaveAcesso: linha.chave_acesso });
+}
+
+export function listarHospitais() {
+  return db.prepare('SELECT * FROM hospital ORDER BY nome').all().map(linhaParaHospital);
+}
+
+export function buscarHospitalPorId(id) {
+  const linha = db.prepare('SELECT * FROM hospital WHERE id = ?').get(id);
+  return linha ? linhaParaHospital(linha) : null;
+}
+
+// RNF-05: encontra o hospital dono da chave, comparando com validarChave()
+export function buscarHospitalPorChave(chave) {
+  return listarHospitais().find((h) => h.validarChave(chave)) ?? null;
+}
+
+// Hospitais de demonstração, com as chaves usadas na integração
+export const HOSPITAIS_DEMO = [
+  { nome: 'Hospital Santa Clara', cnpj: '11222333000181', chaveAcesso: 'hsc-demo-7f3a9c' },
+  { nome: 'Hospital São Lucas', cnpj: '44555666000172', chaveAcesso: 'hsl-demo-2b8e4d' },
+];
+
+export function garantirHospitaisDemo() {
+  const inserir = db.prepare('INSERT OR IGNORE INTO hospital (nome, cnpj, chave_acesso) VALUES (?, ?, ?)');
+  let criados = 0;
+  for (const h of HOSPITAIS_DEMO) criados += inserir.run(h.nome, h.cnpj, h.chaveAcesso).changes;
+  return criados;
+}
+
+function linhaParaSolicitacao(linha) {
+  const bolsas = db.prepare('SELECT * FROM bolsa_sangue WHERE solicitacao_id = ?').all(linha.id).map(linhaParaBolsa);
+  return new Solicitacao({
+    id: linha.id,
+    hospital: buscarHospitalPorId(linha.hospital_id),
+    tipoSanguineo: linha.tipo_sanguineo,
+    quantidade: linha.quantidade,
+    dataSolicitacao: linha.data_solicitacao,
+    status: linha.status,
+    origemManual: linha.origem_manual === 1,
+    dataAtendimento: linha.data_atendimento,
+    bolsas,
+  });
+}
+
+export function salvarSolicitacao(solicitacao) {
+  const { lastInsertRowid } = db
+    .prepare(
+      `INSERT INTO solicitacao (hospital_id, data_solicitacao, tipo_sanguineo, quantidade, status, origem_manual)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      solicitacao.hospital.id,
+      solicitacao.dataSolicitacao.toISOString(),
+      solicitacao.tipoSanguineo,
+      solicitacao.quantidade,
+      solicitacao.status,
+      solicitacao.origemManual ? 1 : 0,
+    );
+  return buscarSolicitacao(Number(lastInsertRowid));
+}
+
+export function buscarSolicitacao(id) {
+  const linha = db.prepare('SELECT * FROM solicitacao WHERE id = ?').get(id);
+  return linha ? linhaParaSolicitacao(linha) : null;
+}
+
+// Pendentes primeiro, depois as mais recentes
+export function listarSolicitacoes() {
+  return db
+    .prepare(`SELECT * FROM solicitacao ORDER BY status = 'PENDENTE' DESC, data_solicitacao DESC`)
+    .all()
+    .map(linhaParaSolicitacao);
+}
+
+// RF-08: grava o atendimento e marca as bolsas como entregues a esta solicitação
+export const salvarAtendimento = db.transaction((solicitacao) => {
+  db.prepare('UPDATE solicitacao SET status = ?, data_atendimento = ? WHERE id = ?')
+    .run(solicitacao.status, solicitacao.dataAtendimento.toISOString(), solicitacao.id);
+  const atualizar = db.prepare('UPDATE bolsa_sangue SET status = ?, solicitacao_id = ? WHERE codigo = ?');
+  for (const bolsa of solicitacao.bolsas) atualizar.run(bolsa.status, solicitacao.id, bolsa.codigo);
+});
+
+// Datas de atendimento das solicitações (RF-10)
+export function datasAtendimentos() {
+  return db
+    .prepare('SELECT data_atendimento FROM solicitacao WHERE data_atendimento IS NOT NULL')
+    .all()
+    .map((linha) => new Date(linha.data_atendimento));
 }
