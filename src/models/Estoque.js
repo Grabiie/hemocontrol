@@ -22,12 +22,17 @@ export class Estoque {
     return this.consultarDisponiveis(tipo, dataReferencia).length < Estoque.LIMITE_CRITICO;
   }
 
-  // Retorna as bolsas descartadas, para que possam ser persistidas
-  descartarVencidas(dataReferencia = new Date()) {
-    const vencidas = this.#bolsas.filter(
+  // Bolsas ainda marcadas como disponíveis, mas com a validade expirada (RN-04)
+  listarVencidas(dataReferencia = new Date()) {
+    return this.#bolsas.filter(
       (b) => b.status === StatusBolsa.DISPONIVEL && b.estaVencida(dataReferencia),
     );
-    vencidas.forEach((b) => b.descartar());
+  }
+
+  // RF-09: retorna as bolsas descartadas, para que possam ser persistidas
+  descartarVencidas(dataReferencia = new Date()) {
+    const vencidas = this.listarVencidas(dataReferencia);
+    vencidas.forEach((b) => b.descartar(dataReferencia));
     return vencidas;
   }
 }

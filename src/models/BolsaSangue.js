@@ -12,14 +12,16 @@ export class BolsaSangue {
   #dataColeta;
   #dataValidade;
   #status;
+  #dataDescarte;
 
-  constructor({ codigo = null, tipoSanguineo, volumeMl, dataColeta = new Date(), status = StatusBolsa.DISPONIVEL }) {
+  constructor({ codigo = null, tipoSanguineo, volumeMl, dataColeta = new Date(), status = StatusBolsa.DISPONIVEL, dataDescarte = null }) {
     this.#codigo = codigo ?? `HC-${randomUUID().slice(0, 8).toUpperCase()}`;
     this.#tipoSanguineo = validarEnum(TipoSanguineo, tipoSanguineo, 'tipo sanguíneo');
     this.#volumeMl = Number(volumeMl);
     this.#dataColeta = new Date(dataColeta);
     this.#status = validarEnum(StatusBolsa, status, 'status da bolsa');
     this.#dataValidade = this.calcularValidade();
+    this.#dataDescarte = dataDescarte ? new Date(dataDescarte) : null;
   }
 
   get codigo() { return this.#codigo; }
@@ -28,6 +30,7 @@ export class BolsaSangue {
   get dataColeta() { return this.#dataColeta; }
   get dataValidade() { return this.#dataValidade; }
   get status() { return this.#status; }
+  get dataDescarte() { return this.#dataDescarte; }
 
   calcularValidade() {
     return somarDias(this.#dataColeta, BolsaSangue.VALIDADE_DIAS);
@@ -37,8 +40,10 @@ export class BolsaSangue {
     return dataReferencia > this.#dataValidade;
   }
 
-  descartar() {
+  // RF-09: registra o descarte e a data em que ele aconteceu
+  descartar(data = new Date()) {
     this.#status = StatusBolsa.DESCARTADA;
+    this.#dataDescarte = new Date(data);
   }
 
   marcarEntregue() {
@@ -54,6 +59,7 @@ export class BolsaSangue {
       dataColeta: this.#dataColeta.toISOString(),
       dataValidade: this.#dataValidade.toISOString(),
       status: this.#status,
+      dataDescarte: this.#dataDescarte?.toISOString() ?? null,
     };
   }
 }
