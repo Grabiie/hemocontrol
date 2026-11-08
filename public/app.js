@@ -8,7 +8,9 @@ for (const [valor, rotulo] of Object.entries(TIPOS)) {
   selectTipo.add(new Option(rotulo, valor));
 }
 
-// Máscara de CPF: 52998224725 -> 529.982.247-25
+// ---------- Máscaras de digitação ----------
+
+// CPF: 52998224725 -> 529.982.247-25
 function formatarCpf(valor) {
   const d = valor.replace(/\D/g, '').slice(0, 11);
   if (d.length > 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
@@ -17,19 +19,36 @@ function formatarCpf(valor) {
   return d;
 }
 
-document.querySelectorAll('input[name=cpf]').forEach((campo) => {
-  campo.addEventListener('input', () => {
-    // Mantém o cursor no lugar certo ao inserir pontos e traço
-    const digitosAntesDoCursor = campo.value.slice(0, campo.selectionStart).replace(/\D/g, '').length;
-    campo.value = formatarCpf(campo.value);
+// Telefone: 11987654321 -> (11) 98765-4321 (celular) | 1134567890 -> (11) 3456-7890 (fixo)
+function formatarTelefone(valor) {
+  let d = valor.replace(/\D/g, '');
+  if (d.length > 11 && d.startsWith('55')) d = d.slice(2); // remove o código do país (+55)
+  d = d.slice(0, 11);
+  if (d.length === 0) return '';
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
 
-    let pos = 0;
-    for (let contados = 0; pos < campo.value.length && contados < digitosAntesDoCursor; pos++) {
-      if (/\d/.test(campo.value[pos])) contados++;
-    }
-    campo.setSelectionRange(pos, pos);
+// Aplica uma máscara mantendo o cursor no lugar certo ao inserir os separadores
+function aplicarMascara(seletor, formatar) {
+  document.querySelectorAll(seletor).forEach((campo) => {
+    campo.addEventListener('input', () => {
+      const digitosAntesDoCursor = campo.value.slice(0, campo.selectionStart).replace(/\D/g, '').length;
+      campo.value = formatar(campo.value);
+
+      let pos = 0;
+      for (let contados = 0; pos < campo.value.length && contados < digitosAntesDoCursor; pos++) {
+        if (/\d/.test(campo.value[pos])) contados++;
+      }
+      campo.setSelectionRange(pos, pos);
+    });
   });
-});
+}
+
+aplicarMascara('input[name=cpf]', formatarCpf);
+aplicarMascara('input[name=telefone]', formatarTelefone);
 
 function mostrar(id, texto, tipo) {
   const el = document.getElementById(id);
