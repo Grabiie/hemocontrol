@@ -180,6 +180,7 @@ BolsaSangue
 - dataColeta: Date
 - dataValidade: Date
 - status: StatusBolsa = DISPONIVEL
+- dataDescarte: Date
 + VALIDADE_DIAS: int = 35 {readOnly}
 -----------------------------------
 + calcularValidade(): Date
@@ -196,6 +197,7 @@ Estoque
 + adicionarBolsa(bolsa: BolsaSangue): void
 + consultarDisponiveis(tipo: TipoSanguineo): List<BolsaSangue>
 + estaCritico(tipo: TipoSanguineo): boolean
++ listarVencidas(dataReferencia: Date): List<BolsaSangue>
 + descartarVencidas(dataReferencia: Date): int
 ```
 
@@ -235,7 +237,7 @@ RelatorioMensal
 - totalBolsasDescartadas: int
 - totalSolicitacoesAtendidas: int
 -----------------------------------
-+ calcularTotais(): void
++ calcularTotais(datasDoacoes: List<Date>, bolsas: List<BolsaSangue>): void
 ```
 
 ## Relacionamentos
@@ -282,6 +284,8 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 | RF-06 (alerta de estoque) | `Estoque.LIMITE_CRITICO` e `estaCritico()` |
 | RF-07 (solicitação manual ou integrada) | `Solicitacao.origemManual` |
 | RNF-05 (chave de acesso) | `Hospital.chaveAcesso` e `validarChave()` |
+| RF-09 (descarte) | `Gestor.descartarBolsasVencidas()`, `Estoque.listarVencidas()`, `BolsaSangue.dataDescarte` |
+| RF-10 (relatório) | `Gestor.gerarRelatorioMensal()` e `RelatorioMensal.calcularTotais()` |
 | RF-11 (inaptidão temporária) | classe `InaptidaoTemporaria` |
 
 ## Checklist antes de exportar

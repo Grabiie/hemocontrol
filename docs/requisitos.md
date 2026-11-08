@@ -42,11 +42,15 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-10
 **Nome:** Gerar relatório mensal
-**Descrição:** O sistema deve gerar, ao final de cada mês, um relatório com o total de doações, bolsas descartadas e solicitações atendidas.
+**Descrição:** O sistema deve permitir que o gestor gere, para um mês escolhido, um relatório com o total de doações, bolsas descartadas e solicitações atendidas.
 
 ### RF-11
 **Nome:** Registrar inaptidão temporária
 **Descrição:** O sistema deve permitir que o médico registre o motivo e o prazo da inaptidão temporária de um doador reprovado na triagem.
+
+### RF-12
+**Nome:** Consultar histórico de doações
+**Descrição:** O sistema deve permitir que qualquer usuário autenticado consulte, pelo CPF, o histórico de doações de um doador, com data, volume, código da bolsa e situação de cada doação.
 
 ## Requisitos Não Funcionais (RNF)
 

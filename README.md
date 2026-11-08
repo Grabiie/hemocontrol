@@ -60,14 +60,14 @@ npm run seed
 
 ### Contas de demonstração
 
-Todas usam a senha `hemo123`. Cada perfil só acessa as funções que o diagrama de casos de uso atribui a ele.
+Todas usam a senha `hemo123`. Cada perfil só acessa as funções que o diagrama de casos de uso atribui a ele, e todos podem consultar o histórico de doações.
 
 | Usuário | Perfil | Pode fazer |
 |---|---|---|
 | `recepcao` | Recepcionista | Cadastrar doador |
 | `medico` | Médico | Realizar triagem |
 | `enfermeiro` | Enfermeiro | Realizar triagem e registrar doação |
-| `gestor` | Gestor | Consultar estoque |
+| `gestor` | Gestor | Consultar estoque, descartar bolsas vencidas e gerar relatório mensal |
 
 As contas também são criadas automaticamente na primeira vez que o servidor sobe.
 
@@ -118,7 +118,9 @@ Em desenvolvimento. Implementação inicial focada no fluxo principal do banco d
 - [x] Registro de doação e geração de bolsa (RF-04, RN-04, RN-05)
 - [x] Consulta de estoque com alerta de estoque crítico (RF-05, RF-06)
 - [ ] Solicitações de hospitais (RF-07, RF-08)
-- [ ] Descarte de bolsas vencidas e relatório mensal (RF-09, RF-10)
+- [x] Descarte de bolsas vencidas (RF-09)
+- [x] Relatório mensal (RF-10)
+- [x] Histórico de doações por doador (RF-12)
 - [ ] Registro de inaptidão temporária (RF-11)
 
 ## Convenção de commits
