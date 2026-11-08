@@ -141,3 +141,12 @@ test('RN-07: doação recusa volume acima do limite pelo peso do doador', () => 
   assert.equal(new Doacao({ triagem, volumeMl: 416 }).volumeMl, 416);
   assert.equal(triagem.toJSON().volumeMaximoMl, 416);
 });
+
+test('Telefone é guardado só com dígitos e precisa ter 10 ou 11 dígitos no cadastro', () => {
+  assert.equal(doador({ telefone: '(11) 98765-4321' }).telefone, '11987654321');
+  assert.equal(doador({ telefone: '(11) 3456-7890' }).telefone, '1134567890');
+  assert.equal(doador({ telefone: '' }).telefone, '');
+  assert.throws(() => doador({ telefone: '98765-4321' }), /Telefone inválido/);
+  // Registros antigos carregados do banco (com id) não são bloqueados
+  assert.equal(doador({ id: 7, telefone: '123' }).telefone, '123');
+});

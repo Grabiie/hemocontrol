@@ -29,11 +29,16 @@ export class Doador {
     this.#dataNascimento = new Date(dataNascimento);
     this.#sexo = validarEnum(Sexo, sexo, 'sexo');
     this.#tipoSanguineo = validarEnum(TipoSanguineo, tipoSanguineo, 'tipo sanguíneo');
-    this.#telefone = telefone ?? '';
+    // Guarda só os dígitos: 10 (fixo) ou 11 (celular), com DDD
+    this.#telefone = String(telefone ?? '').replace(/\D/g, '');
     this.#consentimentoResponsavel = Boolean(consentimentoResponsavel);
 
     if (Number.isNaN(this.#dataNascimento.getTime())) throw new Error('Data de nascimento inválida.');
     if (!this.validarCpf()) throw new Error('CPF inválido.');
+    // Só valida no cadastro (id nulo), para não quebrar registros antigos já salvos no banco
+    if (id === null && this.#telefone && ![10, 11].includes(this.#telefone.length)) {
+      throw new Error('Telefone inválido: informe o DDD e o número, com 10 ou 11 dígitos.');
+    }
   }
 
   get id() { return this.#id; }
