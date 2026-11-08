@@ -131,6 +131,7 @@ MedicaoClinica
 - hemoglobina: double
 -----------------------------------
 + listarAlteracoes(sexo: Sexo): List<String>
++ calcularVolumeMaximo(sexo: Sexo): int
 + estaDentroDosLimites(sexo: Sexo): boolean
 ```
 
@@ -164,6 +165,8 @@ Doacao
 - dataHora: Date
 - volumeMl: int
 - cancelada: boolean = false
++ VOLUME_MINIMO_ML: int = 300 {readOnly}
++ VOLUME_MAXIMO_ML: int = 495 {readOnly}
 -----------------------------------
 + gerarBolsa(): BolsaSangue
 + cancelar(): void
@@ -280,6 +283,7 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 | RN-03 (intervalo) | `Doador.podeDoarEm()` |
 | RN-04 (validade) | `BolsaSangue.VALIDADE_DIAS`, `calcularValidade()`, `estaVencida()` |
 | RN-05 (triagem obrigatória) | associação Triagem 1 → 0..1 Doacao |
+| RN-07 (volume da doação) | `Doacao.VOLUME_MINIMO_ML`, `Doacao.VOLUME_MAXIMO_ML` e `MedicaoClinica.calcularVolumeMaximo()` |
 | RN-06 (critérios clínicos) | `MedicaoClinica.estaDentroDosLimites()` |
 | RF-06 (alerta de estoque) | `Estoque.LIMITE_CRITICO` e `estaCritico()` |
 | RF-07 (solicitação manual ou integrada) | `Solicitacao.origemManual` |

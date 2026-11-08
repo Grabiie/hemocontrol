@@ -99,3 +99,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 ### RN-06
 **Nome:** Critérios clínicos da triagem
 **Descrição:** O doador só pode ser classificado como apto se a hemoglobina estiver entre 13,0 e 18,5 g/dL (homens) ou entre 12,5 e 16,5 g/dL (mulheres). A pressão arterial deve estar entre 90 e 180 mmHg (sistólica) e entre 60 e 100 mmHg (diastólica); fora dessa faixa, o doador só é aceito após avaliação do médico. Valores de pressão adotados como referência do projeto.
+
+### RN-07
+**Nome:** Volume da doação
+**Descrição:** O volume coletado deve estar entre 300 mL e 495 mL (450 mL ± 45 mL; bolsas abaixo de 300 mL são desprezadas) e não pode ultrapassar 8 mL por quilo de peso para mulheres ou 9 mL por quilo de peso para homens, considerando o peso medido na triagem.

@@ -115,7 +115,7 @@ Em desenvolvimento. Implementação inicial focada no fluxo principal do banco d
 - [x] Autenticação por perfil com senha em hash (RF-01, RNF-02)
 - [x] Cadastro de doadores (RF-02, RN-01)
 - [x] Triagem com critérios de aptidão (RF-03, RN-02, RN-03, RN-06)
-- [x] Registro de doação e geração de bolsa (RF-04, RN-04, RN-05)
+- [x] Registro de doação e geração de bolsa, com limite de volume por peso (RF-04, RN-04, RN-05, RN-07)
 - [x] Consulta de estoque com alerta de estoque crítico (RF-05, RF-06)
 - [ ] Solicitações de hospitais (RF-07, RF-08)
 - [x] Listagem e descarte de bolsas vencidas (RF-09)
