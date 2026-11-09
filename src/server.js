@@ -46,8 +46,9 @@ app.get('/api/sessao', (req, res) => {
 
 // RF-02 — Cadastrar doador (Recepcionista)
 app.post('/api/doadores', exigir(Recepcionista), (req, res) => {
-  const doador = repo.salvarDoador(new Doador(req.body));
-  res.status(201).json(doador);
+  const doador = new Doador(req.body);
+  req.usuario.cadastrarDoador(doador);
+  res.status(201).json(repo.salvarDoador(doador));
 });
 
 app.get('/api/doadores/:cpf', exigir(Recepcionista, ProfissionalDeSaude), (req, res) => {

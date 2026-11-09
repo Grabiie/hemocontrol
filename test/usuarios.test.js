@@ -55,3 +55,13 @@ test('Apenas profissionais de saúde realizam triagem e apenas enfermeiros regis
   assert.equal(typeof gestor.realizarTriagem, 'undefined');
   assert.equal(typeof new Enfermeiro({ ...dados('enf'), coren: 'X' }).registrarDoacao, 'function');
 });
+
+test('RF-02: recepcionista confere o doador no cadastro', async () => {
+  const { Doador } = await import('../src/models/Doador.js');
+  const recepcionista = new Recepcionista(dados('recepcao'));
+  const doador = new Doador({
+    nome: 'Maria', cpf: '529.982.247-25', dataNascimento: '1995-04-12', sexo: 'FEMININO', tipoSanguineo: 'O_NEGATIVO',
+  });
+  assert.doesNotThrow(() => recepcionista.cadastrarDoador(doador));
+  assert.throws(() => recepcionista.cadastrarDoador({ nome: 'qualquer' }), /dados do doador/);
+});
