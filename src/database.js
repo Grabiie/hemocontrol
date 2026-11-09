@@ -99,6 +99,12 @@ if (!colunasTriagem.includes('motivos')) {
   db.exec(`ALTER TABLE triagem ADD COLUMN motivos TEXT NOT NULL DEFAULT '[]'`);
 }
 
+// RNF-06: tema preferido do usuário ('claro' ou 'escuro'); nulo enquanto ele não escolher
+const colunasUsuario = db.prepare('PRAGMA table_info(usuario)').all().map((c) => c.name);
+if (!colunasUsuario.includes('tema')) {
+  db.exec('ALTER TABLE usuario ADD COLUMN tema TEXT');
+}
+
 const colunasBolsa = db.prepare('PRAGMA table_info(bolsa_sangue)').all().map((c) => c.name);
 if (!colunasBolsa.includes('data_descarte')) {
   db.exec('ALTER TABLE bolsa_sangue ADD COLUMN data_descarte TEXT');

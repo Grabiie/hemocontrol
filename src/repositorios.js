@@ -45,6 +45,16 @@ export function buscarUsuarioPorId(id) {
   return linha ? linhaParaUsuario(linha) : null;
 }
 
+// RNF-06: preferência de tema do usuário. É uma configuração da interface,
+// por isso fica só no banco e não faz parte da classe Usuario do domínio.
+export function buscarTemaUsuario(id) {
+  return db.prepare('SELECT tema FROM usuario WHERE id = ?').get(id)?.tema ?? null;
+}
+
+export function salvarTemaUsuario(id, tema) {
+  db.prepare('UPDATE usuario SET tema = ? WHERE id = ?').run(tema, id);
+}
+
 // Contas de demonstração, uma por perfil (criadas só se ainda não existirem)
 export const SENHA_DEMO = 'hemo123';
 const USUARIOS_DEMO = [

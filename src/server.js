@@ -31,7 +31,7 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ erro: 'Usuário ou senha inválidos.' });
   }
   iniciarSessao(res, usuario);
-  res.json(usuario);
+  res.json({ ...usuario.toJSON(), tema: repo.buscarTemaUsuario(usuario.id) });
 });
 
 app.post('/api/logout', (req, res) => {
@@ -41,7 +41,17 @@ app.post('/api/logout', (req, res) => {
 
 app.get('/api/sessao', (req, res) => {
   if (!req.usuario) return res.status(401).json({ erro: 'Nenhuma sessão ativa.' });
-  res.json(req.usuario);
+  res.json({ ...req.usuario.toJSON(), tema: repo.buscarTemaUsuario(req.usuario.id) });
+});
+
+// RNF-06 — Salvar o tema preferido do usuário logado
+app.put('/api/preferencias/tema', exigir(Usuario), (req, res) => {
+  const { tema } = req.body ?? {};
+  if (tema !== 'claro' && tema !== 'escuro') {
+    return res.status(400).json({ erro: 'Tema inválido: use "claro" ou "escuro".' });
+  }
+  repo.salvarTemaUsuario(req.usuario.id, tema);
+  res.json({ tema });
 });
 
 // RF-02 — Cadastrar doador (Recepcionista)
