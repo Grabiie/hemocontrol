@@ -4,16 +4,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HemoControl</title>
+  <script>
+    // Aplica o tema antes de desenhar a página, para não piscar o tema errado.
+    // Ordem: escolha salva neste navegador; senão, o tema do sistema operacional.
+    (function () {
+      var tema = null;
+      try { tema = localStorage.getItem('hemocontrol_tema'); } catch (e) {}
+      if (tema !== 'claro' && tema !== 'escuro') {
+        tema = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';
+      }
+      document.documentElement.dataset.tema = tema;
+    })();
+  </script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
     <h1>HemoControl</h1>
     <p>Gestão de banco de sangue</p>
-    <div class="usuario-logado" id="usuario-logado" hidden>
-      <span id="nome-usuario"></span>
-      <span class="perfil" id="perfil-usuario"></span>
-      <button type="button" class="sair" id="botao-sair">Sair</button>
+    <div class="topo-direita">
+      <button type="button" class="botao-tema" id="botao-tema"></button>
+      <div class="usuario-logado" id="usuario-logado" hidden>
+        <span id="nome-usuario"></span>
+        <span class="perfil" id="perfil-usuario"></span>
+        <button type="button" class="sair" id="botao-sair">Sair</button>
+      </div>
     </div>
   </header>
 

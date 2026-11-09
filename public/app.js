@@ -58,9 +58,9 @@ function mostrar(id, texto, tipo) {
   el.className = `mensagem ${tipo}`;
 }
 
-async function enviar(url, dados) {
+async function enviar(url, dados, metodo = 'POST') {
   const resposta = await fetch(url, {
-    method: 'POST',
+    method: metodo,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dados),
   });
@@ -213,8 +213,9 @@ document.querySelector('#form-doacao [name=coletaInterrompida]').addEventListene
 // ---------- Gráfico de estoque (RF-05) ----------
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const COR_NORMAL = '#3d6fb0';
-const COR_CRITICO = '#b3122e';
+// As cores vêm das variáveis do tema (claro ou escuro) definidas no CSS
+const COR_NORMAL = 'var(--grafico-normal)';
+const COR_CRITICO = 'var(--grafico-critico)';
 
 function svg(tag, atributos = {}, texto) {
   const el = document.createElementNS(SVG_NS, tag);
@@ -234,13 +235,13 @@ function desenharGraficoEstoque(tipos, limiteCritico) {
   const y = (valor) => base - (valor / maximo) * (base - topo);
 
   const desenho = svg('svg', { viewBox: `0 0 ${L} ${A}`, role: 'img', 'aria-label': 'Bolsas disponíveis por tipo sanguíneo' });
-  desenho.appendChild(svg('line', { x1: esquerda, x2: L - direita, y1: base, y2: base, stroke: '#c9cdd3', 'stroke-width': 1 }));
+  desenho.appendChild(svg('line', { x1: esquerda, x2: L - direita, y1: base, y2: base, style: 'stroke: var(--borda)', 'stroke-width': 1 }));
 
   // Linha do limite crítico
   const yLimite = y(limiteCritico);
   desenho.appendChild(svg('line', {
     x1: esquerda, x2: L - direita + 8, y1: yLimite, y2: yLimite,
-    stroke: '#8b9199', 'stroke-width': 1, 'stroke-dasharray': '5 4',
+    style: 'stroke: var(--suave)', 'stroke-width': 1, 'stroke-dasharray': '5 4',
   }));
   desenho.appendChild(svg('text', { x: L - direita + 14, y: yLimite + 4, 'font-size': 12, class: 'limite' }, `limite crítico: ${limiteCritico}`));
 
@@ -265,7 +266,7 @@ function desenharGraficoEstoque(tipos, limiteCritico) {
       grupo.appendChild(svg('path', {
         class: 'coluna',
         d: `M${x0},${base} V${topoColuna + r} Q${x0},${topoColuna} ${x0 + r},${topoColuna} H${x1 - r} Q${x1},${topoColuna} ${x1},${topoColuna + r} V${base} Z`,
-        fill: t.critico ? COR_CRITICO : COR_NORMAL,
+        style: `fill: ${t.critico ? COR_CRITICO : COR_NORMAL}`,
       }));
     }
     grupo.appendChild(svg('text', { x: centro, y: topoColuna - 6, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600 }, t.quantidade));
@@ -662,6 +663,52 @@ document.getElementById('form-historico').addEventListener('submit', async (e) =
   }
 });
 
+// ---------- Tema claro/escuro (RNF-06) ----------
+// Prioridade: preferência salva do usuário logado > escolha salva neste navegador > tema do sistema.
+
+const CHAVE_TEMA = 'hemocontrol_tema';
+
+function temaSalvoNoNavegador() {
+  try {
+    const tema = localStorage.getItem(CHAVE_TEMA);
+    return tema === 'claro' || tema === 'escuro' ? tema : null;
+  } catch {
+    return null;
+  }
+}
+
+function temaDoSistema() {
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';
+}
+
+function aplicarTema(tema) {
+  document.documentElement.dataset.tema = tema;
+  const botao = document.getElementById('botao-tema');
+  botao.textContent = tema === 'escuro' ? '☀ Tema claro' : '☾ Tema escuro';
+  botao.setAttribute('aria-label', tema === 'escuro' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro');
+}
+
+function salvarTemaNoNavegador(tema) {
+  try { localStorage.setItem(CHAVE_TEMA, tema); } catch { /* navegador sem armazenamento: só vale nesta página */ }
+}
+
+document.getElementById('botao-tema').addEventListener('click', async () => {
+  const novo = document.documentElement.dataset.tema === 'escuro' ? 'claro' : 'escuro';
+  aplicarTema(novo);
+  salvarTemaNoNavegador(novo);
+  if (usuarioAtual) {
+    usuarioAtual.tema = novo;
+    try { await enviar('/api/preferencias/tema', { tema: novo }, 'PUT'); } catch { /* o tema continua salvo no navegador */ }
+  }
+});
+
+// Se a pessoa nunca escolheu, acompanha a mudança de tema do sistema operacional
+window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (!temaSalvoNoNavegador() && !usuarioAtual?.tema) aplicarTema(temaDoSistema());
+});
+
+aplicarTema(document.documentElement.dataset.tema || temaSalvoNoNavegador() || temaDoSistema());
+
 // ---------- Login e perfis (RF-01) ----------
 
 const ROTULO_PERFIL = {
@@ -672,6 +719,7 @@ const ROTULO_PERFIL = {
 };
 
 function mostrarLogin() {
+  usuarioAtual = null;
   document.getElementById('sistema').hidden = true;
   document.getElementById('usuario-logado').hidden = true;
   document.getElementById('tela-login').hidden = false;
@@ -679,6 +727,11 @@ function mostrarLogin() {
 
 function mostrarSistema(usuario) {
   usuarioAtual = usuario;
+  // Preferência do usuário vale em qualquer navegador onde ele entrar
+  if (usuario.tema) {
+    aplicarTema(usuario.tema);
+    salvarTemaNoNavegador(usuario.tema);
+  }
   document.getElementById('form-inaptidao').hidden = true;
   document.getElementById('nome-usuario').textContent = usuario.nome;
   document.getElementById('perfil-usuario').textContent = ROTULO_PERFIL[usuario.perfil];
