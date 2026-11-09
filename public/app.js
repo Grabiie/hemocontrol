@@ -495,6 +495,9 @@ document.getElementById('form-relatorio').addEventListener('submit', async (e) =
   e.preventDefault();
   const [ano, mes] = e.target.mes.value.split('-');
   const resultado = document.getElementById('resultado-relatorio');
+  // Guarda a posição da tela: ao trocar o conteúdo, o navegador tentava manter
+  // o painel de baixo no lugar e acabava levando a tela para o fim do relatório.
+  const posicao = window.scrollY;
   resultado.innerHTML = '';
   document.getElementById('botoes-exportar').hidden = true;
   mostrar('msg-relatorio', '', '');
@@ -508,6 +511,10 @@ document.getElementById('form-relatorio').addEventListener('submit', async (e) =
     ultimoRelatorio = r;
     renderizarRelatorio(r, resultado);
     document.getElementById('botoes-exportar').hidden = false;
+
+    // Volta para onde estava e mostra o começo do relatório
+    window.scrollTo({ top: posicao });
+    resultado.querySelector('h3')?.scrollIntoView({ block: 'nearest' });
   } catch (erro) {
     mostrar('msg-relatorio', erro.message, 'erro');
   }
