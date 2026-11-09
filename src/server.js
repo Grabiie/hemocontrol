@@ -62,7 +62,17 @@ app.get('/api/doadores/:cpf/historico', exigir(Usuario), (req, res) => {
   const doador = repo.buscarDoadorPorCpf(req.params.cpf);
   if (!doador) return res.status(404).json({ erro: 'Doador não encontrado.' });
   const inaptidao = repo.inaptidoesDoDoador(doador.id).find((i) => i.estaVigente()) ?? null;
-  res.json({ doador, inaptidao, doacoes: repo.historicoDoacoes(doador.id) });
+
+  // Próxima data em que pode doar: RN-03 e, se houver, o fim da inaptidão temporária (RF-11)
+  let proximaDoacao = doador.calcularProximaDataDoacao(repo.datasDoacoesDoDoador(doador.id));
+  if (inaptidao && (!proximaDoacao || inaptidao.dataFim > proximaDoacao)) proximaDoacao = inaptidao.dataFim;
+
+  res.json({
+    doador,
+    inaptidao,
+    proximaDoacao: proximaDoacao?.toISOString() ?? null,
+    doacoes: repo.historicoDoacoes(doador.id),
+  });
 });
 
 // RF-03 — Realizar triagem (Profissional de Saúde: Médico ou Enfermeiro)
@@ -117,6 +127,8 @@ app.get('/api/estoque', exigir(Gestor), (req, res) => {
   res.json({
     limiteCritico: Estoque.LIMITE_CRITICO,
     vencidas: estoque.listarVencidas().length,
+    diasAlertaVencimento: Estoque.DIAS_ALERTA_VENCIMENTO,
+    proximasDoVencimento: estoque.listarProximasDoVencimento(),
     tipos: resumo,
   });
 });

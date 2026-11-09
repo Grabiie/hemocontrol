@@ -162,6 +162,25 @@ textarea { font: inherit; color: var(--texto); padding: 8px 10px; border: 1px so
 .painel h3 { margin: 20px 0 8px; font-size: 0.95rem; }
 
 #area-vencidas h3 { color: var(--vermelho); }
+#area-vencendo h3 { color: #8a5300; }
+
+/* Gráfico de estoque: azul = normal, vermelho = crítico (par validado para daltonismo) */
+.grafico { position: relative; }
+.grafico svg { display: block; width: 100%; height: auto; }
+.grafico .barra { cursor: default; }
+.grafico .barra:hover rect.coluna, .grafico .barra:focus rect.coluna { filter: brightness(1.15); }
+.grafico .barra:focus { outline: none; }
+.grafico .barra:focus rect.alvo { stroke: var(--texto); stroke-width: 1; stroke-dasharray: 2 2; }
+.grafico text { font-family: inherit; fill: var(--texto); }
+.grafico text.eixo, .grafico text.limite { fill: var(--suave); }
+.grafico-legenda { display: flex; gap: 18px; justify-content: center; margin-top: 4px; font-size: 0.8rem; color: var(--suave); }
+.grafico-legenda span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; background: var(--cor); }
+.dica-grafico {
+  position: absolute; pointer-events: none; transform: translate(-50%, -100%);
+  background: var(--texto); color: #fff; font-size: 0.78rem; line-height: 1.35;
+  padding: 6px 9px; border-radius: 6px; white-space: nowrap;
+}
+.proxima-doacao { margin: 8px 0; padding: 8px 10px; border-radius: 6px; background: var(--fundo); font-size: 0.85rem; }
 
 .form-linha { flex-direction: row; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
 .form-linha label { min-width: 200px; }

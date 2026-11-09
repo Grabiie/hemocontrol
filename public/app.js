@@ -210,12 +210,120 @@ document.querySelector('#form-doacao [name=coletaInterrompida]').addEventListene
   document.querySelector('#form-doacao [name=volumeMl]').min = e.target.checked ? 0 : 300;
 });
 
+// ---------- Gráfico de estoque (RF-05) ----------
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const COR_NORMAL = '#3d6fb0';
+const COR_CRITICO = '#b3122e';
+
+function svg(tag, atributos = {}, texto) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [nome, valor] of Object.entries(atributos)) el.setAttribute(nome, valor);
+  if (texto !== undefined) el.textContent = texto;
+  return el;
+}
+
+// Colunas com a quantidade de cada tipo e uma linha tracejada no limite crítico
+function desenharGraficoEstoque(tipos, limiteCritico) {
+  const destino = document.getElementById('grafico-estoque');
+  destino.innerHTML = '';
+
+  const L = 800, A = 230, esquerda = 16, direita = 150, topo = 26, base = 172;
+  const faixa = (L - esquerda - direita) / tipos.length;
+  const maximo = Math.max(limiteCritico, ...tipos.map((t) => t.quantidade)) * 1.12;
+  const y = (valor) => base - (valor / maximo) * (base - topo);
+
+  const desenho = svg('svg', { viewBox: `0 0 ${L} ${A}`, role: 'img', 'aria-label': 'Bolsas disponíveis por tipo sanguíneo' });
+  desenho.appendChild(svg('line', { x1: esquerda, x2: L - direita, y1: base, y2: base, stroke: '#c9cdd3', 'stroke-width': 1 }));
+
+  // Linha do limite crítico
+  const yLimite = y(limiteCritico);
+  desenho.appendChild(svg('line', {
+    x1: esquerda, x2: L - direita + 8, y1: yLimite, y2: yLimite,
+    stroke: '#8b9199', 'stroke-width': 1, 'stroke-dasharray': '5 4',
+  }));
+  desenho.appendChild(svg('text', { x: L - direita + 14, y: yLimite + 4, 'font-size': 12, class: 'limite' }, `limite crítico: ${limiteCritico}`));
+
+  const dica = criar('div', 'dica-grafico');
+  dica.hidden = true;
+
+  tipos.forEach((t, i) => {
+    const centro = esquerda + faixa * i + faixa / 2;
+    const largura = 24;
+    const topoColuna = y(t.quantidade);
+    const descricao = `${t.rotulo}: ${plural(t.quantidade, 'bolsa disponível', 'bolsas disponíveis')}` +
+      (t.critico ? ' — estoque crítico' : '');
+
+    const grupo = svg('g', { class: 'barra', tabindex: 0, role: 'img', 'aria-label': descricao });
+    // Área de toque maior que a coluna
+    grupo.appendChild(svg('rect', { class: 'alvo', x: centro - faixa / 2 + 2, y: topo - 18, width: faixa - 4, height: base - topo + 58, fill: 'transparent' }));
+
+    if (t.quantidade > 0) {
+      const r = Math.min(4, base - topoColuna);
+      const x0 = centro - largura / 2, x1 = centro + largura / 2;
+      // Topo arredondado, base reta
+      grupo.appendChild(svg('path', {
+        class: 'coluna',
+        d: `M${x0},${base} V${topoColuna + r} Q${x0},${topoColuna} ${x0 + r},${topoColuna} H${x1 - r} Q${x1},${topoColuna} ${x1},${topoColuna + r} V${base} Z`,
+        fill: t.critico ? COR_CRITICO : COR_NORMAL,
+      }));
+    }
+    grupo.appendChild(svg('text', { x: centro, y: topoColuna - 6, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600 }, t.quantidade));
+    grupo.appendChild(svg('text', { x: centro, y: base + 18, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600 }, t.rotulo));
+    if (t.critico) {
+      grupo.appendChild(svg('text', { x: centro, y: base + 34, 'text-anchor': 'middle', 'font-size': 11, class: 'eixo' }, 'crítico'));
+    }
+
+    const mostrarDica = () => {
+      const faltam = limiteCritico - t.quantidade;
+      dica.textContent = descricao + (t.critico ? ` (${plural(faltam, 'bolsa', 'bolsas')} abaixo do limite)` : '');
+      dica.style.left = `${(centro / L) * 100}%`;
+      dica.style.top = `${((topoColuna - 24) / A) * 100}%`;
+      dica.hidden = false;
+    };
+    const esconderDica = () => { dica.hidden = true; };
+    grupo.addEventListener('mouseenter', mostrarDica);
+    grupo.addEventListener('mouseleave', esconderDica);
+    grupo.addEventListener('focus', mostrarDica);
+    grupo.addEventListener('blur', esconderDica);
+    desenho.appendChild(grupo);
+  });
+
+  const legenda = criar('div', 'grafico-legenda');
+  for (const [cor, texto] of [[COR_NORMAL, 'Normal'], [COR_CRITICO, 'Estoque crítico']]) {
+    const item = criar('span', null, texto);
+    item.style.setProperty('--cor', cor);
+    legenda.appendChild(item);
+  }
+  destino.append(desenho, dica, legenda);
+}
+
+// RF-05 — bolsas disponíveis que vencem nos próximos dias
+function mostrarProximasDoVencimento(bolsas, dias) {
+  const area = document.getElementById('area-vencendo');
+  area.hidden = bolsas.length === 0;
+  if (bolsas.length === 0) return;
+
+  document.getElementById('titulo-vencendo').textContent =
+    `${plural(bolsas.length, 'bolsa vence', 'bolsas vencem')} nos próximos ${dias} dias — priorize o uso`;
+
+  const hoje = new Date();
+  const linhas = bolsas.map((b) => {
+    const restam = Math.ceil((new Date(b.dataValidade) - hoje) / 86400000);
+    return [b.codigo, TIPOS[b.tipoSanguineo], formatarData(b.dataColeta), formatarData(b.dataValidade),
+      restam <= 1 ? 'menos de 1 dia' : `${restam} dias`];
+  });
+  const destino = document.getElementById('tabela-vencendo');
+  destino.innerHTML = '';
+  destino.appendChild(criarTabela(['Bolsa', 'Tipo', 'Coleta', 'Validade', 'Vence em'], linhas, true));
+}
+
 // ---------- Estoque e bolsas vencidas (RF-05, RF-06, RF-09) ----------
 
 async function atualizarEstoque() {
   const resposta = await fetch('/api/estoque');
   if (!resposta.ok) return;
-  const { limiteCritico, vencidas, tipos } = await resposta.json();
+  const { limiteCritico, vencidas, tipos, proximasDoVencimento, diasAlertaVencimento } = await resposta.json();
   document.getElementById('limite').textContent = limiteCritico;
 
   const grade = document.getElementById('grade-estoque');
@@ -229,6 +337,9 @@ async function atualizarEstoque() {
     );
     grade.appendChild(card);
   }
+
+  desenharGraficoEstoque(tipos, limiteCritico);
+  mostrarProximasDoVencimento(proximasDoVencimento, diasAlertaVencimento);
 
   const botao = document.getElementById('botao-descartar');
   const area = document.getElementById('area-vencidas');
@@ -490,7 +601,7 @@ document.getElementById('form-historico').addEventListener('submit', async (e) =
     if (resposta.status === 401) mostrarLogin();
     if (!resposta.ok) throw new Error(dados.erro ?? 'Erro ao consultar o histórico.');
 
-    const { doador, doacoes, inaptidao } = dados;
+    const { doador, doacoes, inaptidao, proximaDoacao } = dados;
     const cabecalho = document.createElement('p');
     cabecalho.className = 'historico-doador';
     cabecalho.textContent = `${doador.nome} · tipo ${TIPOS[doador.tipoSanguineo]} · ` +
@@ -500,6 +611,12 @@ document.getElementById('form-historico').addEventListener('submit', async (e) =
       resultado.appendChild(criar('p', 'alerta-inaptidao',
         `Inapto temporariamente até ${formatarData(inaptidao.dataFim)}: ${inaptidao.motivo}`));
     }
+
+    // RN-03: próxima data em que o doador pode doar
+    const jaPode = !proximaDoacao || new Date(proximaDoacao) <= new Date();
+    resultado.appendChild(criar('p', 'proxima-doacao', jaPode
+      ? 'Já pode doar novamente, sujeito à triagem.'
+      : `Pode doar novamente a partir de ${formatarData(proximaDoacao)}.`));
 
     if (doacoes.length === 0) {
       resultado.appendChild(Object.assign(document.createElement('p'), {
