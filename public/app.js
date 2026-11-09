@@ -613,10 +613,20 @@ document.getElementById('form-historico').addEventListener('submit', async (e) =
     }
 
     // RN-03: próxima data em que o doador pode doar
+    // Doações canceladas não contam: quem só teve coleta interrompida ainda não doou
+    const nuncaDoou = doacoes.every((d) => d.cancelada);
     const jaPode = !proximaDoacao || new Date(proximaDoacao) <= new Date();
-    resultado.appendChild(criar('p', 'proxima-doacao', jaPode
-      ? 'Já pode doar novamente, sujeito à triagem.'
-      : `Pode doar novamente a partir de ${formatarData(proximaDoacao)}.`));
+    let textoProxima;
+    if (jaPode) {
+      textoProxima = nuncaDoou
+        ? 'Ainda não fez nenhuma doação. Pode fazer a primeira, sujeito à triagem.'
+        : 'Já pode doar novamente, sujeito à triagem.';
+    } else {
+      textoProxima = nuncaDoou
+        ? `Ainda não fez nenhuma doação. Poderá doar a partir de ${formatarData(proximaDoacao)}.`
+        : `Pode doar novamente a partir de ${formatarData(proximaDoacao)}.`;
+    }
+    resultado.appendChild(criar('p', 'proxima-doacao', textoProxima));
 
     if (doacoes.length === 0) {
       resultado.appendChild(Object.assign(document.createElement('p'), {
