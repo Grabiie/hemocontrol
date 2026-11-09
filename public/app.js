@@ -326,17 +326,21 @@ async function atualizarEstoque() {
   const { limiteCritico, vencidas, tipos, proximasDoVencimento, diasAlertaVencimento } = await resposta.json();
   document.getElementById('limite').textContent = limiteCritico;
 
-  const grade = document.getElementById('grade-estoque');
-  grade.innerHTML = '';
-  for (const t of tipos) {
-    const card = criar('div', `tipo${t.critico ? ' critico' : ''}`);
-    card.append(
-      criar('div', 'rotulo', t.rotulo),
-      criar('div', 'quantidade', plural(t.quantidade, 'bolsa', 'bolsas')),
-      criar('div', 'status', t.critico ? 'ESTOQUE CRÍTICO' : 'Normal'),
+  // Resumo acima do gráfico: tipos críticos e total disponível (RF-05, RF-06)
+  const criticos = tipos.filter((t) => t.critico).map((t) => t.rotulo);
+  const total = tipos.reduce((soma, t) => soma + t.quantidade, 0);
+  const resumo = document.getElementById('resumo-estoque');
+  resumo.innerHTML = '';
+  resumo.classList.toggle('tem-critico', criticos.length > 0);
+  if (criticos.length > 0) {
+    resumo.append(
+      criar('strong', null, `${plural(criticos.length, 'tipo', 'tipos')} em estoque crítico:`),
+      ` ${criticos.join(', ')}`,
     );
-    grade.appendChild(card);
+  } else {
+    resumo.append(criar('strong', null, 'Nenhum tipo em estoque crítico.'));
   }
+  resumo.append(criar('span', 'total-estoque', ` · ${plural(total, 'bolsa disponível', 'bolsas disponíveis')} no total`));
 
   desenharGraficoEstoque(tipos, limiteCritico);
   mostrarProximasDoVencimento(proximasDoVencimento, diasAlertaVencimento);

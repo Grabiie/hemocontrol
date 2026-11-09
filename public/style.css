@@ -120,22 +120,7 @@ button:hover { filter: brightness(1.1); }
 
 .legenda { margin: -6px 0 16px; color: var(--suave); font-size: 0.9rem; }
 
-.grade { display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px; }
 
-.tipo {
-  border: 1px solid var(--borda);
-  border-radius: 8px;
-  padding: 14px 10px;
-  text-align: center;
-  background: var(--verde-claro);
-  transition: transform 0.2s;
-}
-.tipo.critico { background: var(--vermelho-claro); border-color: var(--vermelho); }
-.tipo.atualizado { transform: scale(1.08); }
-.tipo .rotulo { font-size: 1.4rem; font-weight: 700; }
-.tipo .quantidade { font-size: 0.9rem; color: var(--suave); }
-.tipo .status { margin-top: 6px; font-size: 0.75rem; font-weight: 600; color: var(--verde); }
-.tipo.critico .status { color: var(--vermelho); }
 
 #painel-estoque { order: -3; }
 #painel-solicitacoes { order: -2; }
@@ -180,6 +165,12 @@ textarea { font: inherit; color: var(--texto); padding: 8px 10px; border: 1px so
   background: var(--texto); color: #fff; font-size: 0.78rem; line-height: 1.35;
   padding: 6px 9px; border-radius: 6px; white-space: nowrap;
 }
+.resumo-estoque { margin: 0 0 4px; padding: 8px 12px; border-radius: 6px; background: var(--verde-claro); font-size: 0.9rem; }
+.resumo-estoque.tem-critico { background: var(--vermelho-claro); }
+.resumo-estoque strong { color: var(--verde); }
+.resumo-estoque.tem-critico strong { color: var(--vermelho); }
+.resumo-estoque .total-estoque { color: var(--suave); }
+
 .proxima-doacao { margin: 8px 0; padding: 8px 10px; border-radius: 6px; background: var(--fundo); font-size: 0.85rem; }
 
 .form-linha { flex-direction: row; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
@@ -244,5 +235,4 @@ button.secundario { background: #fff; color: var(--vermelho); border: 1px solid 
 
 @media (max-width: 900px) {
   main { grid-template-columns: 1fr; }
-  .grade { grid-template-columns: repeat(4, 1fr); }
 }
