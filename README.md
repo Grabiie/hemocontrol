@@ -133,6 +133,7 @@ Em desenvolvimento. Implementação inicial focada no fluxo principal do banco d
 - [x] Diagrama de casos de uso
 - [x] Diagrama de classes
 - [x] Autenticação por perfil com senha em hash (RF-01, RNF-02)
+- [x] Tema claro e escuro, salvo por usuário e por navegador (RNF-06)
 - [x] Cadastro de doadores (RF-02, RN-01)
 - [x] Triagem com critérios de aptidão (RF-03, RN-02, RN-03, RN-06)
 - [x] Registro de doação e geração de bolsa, com limite de volume por peso (RF-04, RN-04, RN-05, RN-07)

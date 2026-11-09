@@ -74,6 +74,10 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 **Nome:** Autenticação de sistemas externos
 **Descrição:** O sistema deve aceitar solicitações de sistemas externos somente com chave de acesso válida, rejeitando as demais requisições com mensagem de erro.
 
+### RNF-06
+**Nome:** Tema claro e escuro
+**Descrição:** O sistema deve oferecer tema claro e escuro. Na primeira visita, deve seguir o tema do sistema operacional; a escolha feita pelo usuário deve ficar salva no navegador e na conta do usuário, valendo em qualquer navegador em que ele entrar.
+
 ## Regras de Negócio (RN)
 
 ### RN-01
