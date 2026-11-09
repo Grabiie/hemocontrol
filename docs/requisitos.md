@@ -22,7 +22,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-05
 **Nome:** Consultar estoque
-**Descrição:** O sistema deve listar as bolsas disponíveis, agrupadas por tipo sanguíneo (ABO/Rh), com a quantidade de cada grupo.
+**Descrição:** O sistema deve listar as bolsas disponíveis, agrupadas por tipo sanguíneo (ABO/Rh), com a quantidade de cada grupo em cartões e em gráfico, e destacar as bolsas que vencem nos próximos 7 dias.
 
 ### RF-06
 **Nome:** Emitir alerta de estoque crítico
@@ -50,7 +50,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-12
 **Nome:** Consultar histórico de doações
-**Descrição:** O sistema deve permitir que qualquer usuário autenticado consulte, pelo CPF, o histórico de doações de um doador, com data, volume, código da bolsa e situação de cada doação.
+**Descrição:** O sistema deve permitir que qualquer usuário autenticado consulte, pelo CPF, o histórico de doações de um doador, com data, volume, código da bolsa e situação de cada doação, além da data a partir da qual o doador pode doar novamente.
 
 ## Requisitos Não Funcionais (RNF)
 

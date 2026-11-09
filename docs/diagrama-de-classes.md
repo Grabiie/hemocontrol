@@ -118,6 +118,7 @@ Doador
 + validarCpf(): boolean
 + calcularIdade(dataReferencia: Date): int
 + listarImpedimentos(data: Date, datasDoacoes: List<Date>): List<String>
++ calcularProximaDataDoacao(datasDoacoes: List<Date>): Date
 + podeDoarEm(data: Date, datasDoacoes: List<Date>): boolean
 ```
 
@@ -197,10 +198,12 @@ BolsaSangue
 Estoque
 -----------------------------------
 + LIMITE_CRITICO: int = 10 {readOnly}
++ DIAS_ALERTA_VENCIMENTO: int = 7 {readOnly}
 -----------------------------------
 + adicionarBolsa(bolsa: BolsaSangue): void
 + consultarDisponiveis(tipo: TipoSanguineo): List<BolsaSangue>
 + estaCritico(tipo: TipoSanguineo): boolean
++ listarProximasDoVencimento(dataReferencia: Date): List<BolsaSangue>
 + listarVencidas(dataReferencia: Date): List<BolsaSangue>
 + descartarVencidas(dataReferencia: Date): int
 ```
@@ -283,11 +286,12 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 |---|---|
 | RN-01 (CPF único) | `Doador.cpf` e `validarCpf()` |
 | RN-02 (idade e peso) | `Doador.calcularIdade()`, `consentimentoResponsavel`, `MedicaoClinica.peso` |
-| RN-03 (intervalo) | `Doador.podeDoarEm()` |
+| RN-03 (intervalo) | `Doador.podeDoarEm()` e `Doador.calcularProximaDataDoacao()` |
 | RN-04 (validade) | `BolsaSangue.VALIDADE_DIAS`, `calcularValidade()`, `estaVencida()` |
 | RN-05 (triagem obrigatória) | associação Triagem 1 → 0..1 Doacao |
 | RN-07 (volume da doação) | `Doacao.VOLUME_MINIMO_ML`, `Doacao.VOLUME_MAXIMO_ML` e `MedicaoClinica.calcularVolumeMaximo()` |
 | RN-06 (critérios clínicos) | `MedicaoClinica.estaDentroDosLimites()` |
+| RF-05 (bolsas perto de vencer) | `Estoque.DIAS_ALERTA_VENCIMENTO` e `Estoque.listarProximasDoVencimento()` |
 | RF-06 (alerta de estoque) | `Estoque.LIMITE_CRITICO` e `estaCritico()` |
 | RF-07 (solicitação manual ou integrada) | `Solicitacao.origemManual` |
 | RNF-05 (chave de acesso) | `Hospital.chaveAcesso` e `validarChave()` |

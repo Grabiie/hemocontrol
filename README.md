@@ -136,13 +136,13 @@ Em desenvolvimento. Implementação inicial focada no fluxo principal do banco d
 - [x] Cadastro de doadores (RF-02, RN-01)
 - [x] Triagem com critérios de aptidão (RF-03, RN-02, RN-03, RN-06)
 - [x] Registro de doação e geração de bolsa, com limite de volume por peso (RF-04, RN-04, RN-05, RN-07)
-- [x] Consulta de estoque com alerta de estoque crítico (RF-05, RF-06)
+- [x] Consulta de estoque com gráfico, alerta de estoque crítico e de bolsas perto de vencer (RF-05, RF-06)
 - [x] Solicitações de hospitais, manuais e por integração com chave de acesso (RF-07, RNF-05)
 - [x] Atendimento de solicitações priorizando a validade mais próxima, com atendimento parcial (RF-08)
 - [x] Listagem e descarte de bolsas vencidas (RF-09)
 - [x] Relatório mensal com destino das bolsas e exportação em PDF e CSV (RF-10)
 - [x] Registro de inaptidão temporária (RF-11)
-- [x] Histórico de doações por doador (RF-12)
+- [x] Histórico de doações por doador, com a próxima data em que ele pode doar (RF-12)
 - [x] Doação cancelada por coleta interrompida (fluxo alternativo de RF-04)
 
 ## Convenção de commits
