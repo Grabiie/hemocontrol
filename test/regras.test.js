@@ -150,3 +150,19 @@ test('Telefone é guardado só com dígitos e precisa ter 10 ou 11 dígitos no c
   // Registros antigos carregados do banco (com id) não são bloqueados
   assert.equal(doador({ id: 7, telefone: '123' }).telefone, '123');
 });
+
+test('RN-03: próxima data de doação respeita o intervalo de cada sexo', () => {
+  const ultima = somarDias(HOJE, -20);
+  assert.equal(doador().calcularProximaDataDoacao([]), null);
+  assert.deepEqual(doador().calcularProximaDataDoacao([ultima]), somarDias(ultima, 90));
+  assert.deepEqual(doador({ sexo: 'MASCULINO' }).calcularProximaDataDoacao([ultima]), somarDias(ultima, 60));
+});
+
+test('RN-03: próxima data de doação espera o limite anual liberar', () => {
+  // Mulher com 3 doações em 12 meses: só pode doar quando a mais antiga completar 1 ano
+  const datas = [-300, -200, -100].map((d) => somarDias(HOJE, d));
+  const proxima = doador().calcularProximaDataDoacao(datas);
+  assert.deepEqual(proxima, somarDias(datas[0], 365));
+  assert.equal(doador().podeDoarEm(proxima, datas), true);
+  assert.equal(doador().podeDoarEm(somarDias(proxima, -1), datas), false);
+});

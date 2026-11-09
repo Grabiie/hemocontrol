@@ -1,5 +1,5 @@
 import { Sexo, TipoSanguineo, validarEnum } from './enums.js';
-import { diasEntre } from './datas.js';
+import { diasEntre, somarDias } from './datas.js';
 
 // RN-02: idade mínima e limite para a primeira doação
 const IDADE_MINIMA = 16;
@@ -109,6 +109,23 @@ export class Doador {
     }
 
     return motivos;
+  }
+
+  // RN-03: primeira data em que o intervalo mínimo e o limite anual estarão cumpridos.
+  // Retorna null para quem nunca doou (não há espera a cumprir).
+  calcularProximaDataDoacao(datasDoacoes = []) {
+    if (datasDoacoes.length === 0) return null;
+
+    const datas = [...datasDoacoes].sort((a, b) => a - b);
+    const limite = LIMITE_ANUAL[this.#sexo];
+    let proxima = somarDias(datas[datas.length - 1], INTERVALO_DIAS[this.#sexo]);
+
+    // Enquanto houver doações demais nos 12 meses anteriores, espera a mais antiga sair da janela
+    for (;;) {
+      const noUltimoAno = datas.filter((d) => diasEntre(d, proxima) < 365);
+      if (noUltimoAno.length < limite) return proxima;
+      proxima = somarDias(noUltimoAno[noUltimoAno.length - limite], 365);
+    }
   }
 
   podeDoarEm(data, datasDoacoes = []) {
