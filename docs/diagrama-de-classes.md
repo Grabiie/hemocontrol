@@ -63,7 +63,6 @@ Recepcionista
 (sem atributos próprios)
 -----------------------------------
 + cadastrarDoador(doador: Doador): void
-+ buscarDoador(cpf: String): Doador
 ```
 
 ```
@@ -72,7 +71,7 @@ Gestor
 (sem atributos próprios)
 -----------------------------------
 + registrarSolicitacao(solicitacao: Solicitacao): void
-+ atenderSolicitacao(solicitacao: Solicitacao, aceitaParcial: boolean): boolean
++ atenderSolicitacao(solicitacao: Solicitacao, estoque: Estoque, aceitaParcial: boolean): boolean
 + descartarBolsasVencidas(estoque: Estoque): int
 + gerarRelatorioMensal(mes: int, ano: int): RelatorioMensal
 ```
@@ -99,7 +98,7 @@ Enfermeiro
 -----------------------------------
 - coren: String
 -----------------------------------
-+ registrarDoacao(triagem: Triagem, volumeMl: int): Doacao
++ registrarDoacao(triagem: Triagem, volumeMl: int, coletaInterrompida: boolean): Doacao
 ```
 
 ### Doador, triagem e doação
@@ -143,7 +142,7 @@ Triagem
 - apto: boolean = false
 - motivos: List<String>
 -----------------------------------
-+ avaliar(datasDoacoes: List<Date>): boolean
++ avaliar(datasDoacoes: List<Date>, inaptidoes: List<InaptidaoTemporaria>): boolean
 + estaApta(): boolean
 + getMotivos(): List<String>
 ```
@@ -151,9 +150,11 @@ Triagem
 ```
 InaptidaoTemporaria
 -----------------------------------
+- id: int
 - motivo: String
 - dataInicio: Date
 - dataFim: Date
++ PRAZO_MAXIMO_DIAS: int = 365 {readOnly}
 -----------------------------------
 + estaVigente(data: Date): boolean
 ```
@@ -226,6 +227,8 @@ Solicitacao
 - quantidade: int
 - status: StatusSolicitacao = PENDENTE
 - origemManual: boolean = false
+- dataAtendimento: Date
++ QUANTIDADE_MAXIMA: int = 50 {readOnly}
 -----------------------------------
 + atender(estoque: Estoque, aceitaParcial: boolean): boolean
 + getQuantidadeAtendida(): int
@@ -240,7 +243,7 @@ RelatorioMensal
 - totalBolsasDescartadas: int
 - totalSolicitacoesAtendidas: int
 -----------------------------------
-+ calcularTotais(datasDoacoes: List<Date>, bolsas: List<BolsaSangue>): void
++ calcularTotais(datasDoacoes: List<Date>, bolsas: List<BolsaSangue>, datasAtendimentos: List<Date>): void
 ```
 
 ## Relacionamentos
@@ -290,7 +293,10 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 | RNF-05 (chave de acesso) | `Hospital.chaveAcesso` e `validarChave()` |
 | RF-09 (descarte) | `Gestor.descartarBolsasVencidas()`, `Estoque.listarVencidas()`, `BolsaSangue.dataDescarte` |
 | RF-10 (relatório) | `Gestor.gerarRelatorioMensal()` e `RelatorioMensal.calcularTotais()` |
-| RF-11 (inaptidão temporária) | classe `InaptidaoTemporaria` |
+| RF-07 (registrar solicitação) | classe `Solicitacao`, `Solicitacao.origemManual` e `Gestor.registrarSolicitacao()` |
+| RF-08 (atender solicitação) | `Solicitacao.atender()` e `Gestor.atenderSolicitacao()` |
+| RF-11 (inaptidão temporária) | classe `InaptidaoTemporaria`, `Medico.registrarInaptidao()` e o parâmetro `inaptidoes` de `Triagem.avaliar()` |
+| Fluxo 3a de Registrar Doação (coleta interrompida) | `Doacao.cancelada`, `Doacao.cancelar()` e `Enfermeiro.registrarDoacao(..., coletaInterrompida)` |
 
 ## Checklist antes de exportar
 

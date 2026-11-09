@@ -44,7 +44,7 @@ O objetivo é substituir controles manuais (papel e planilhas), reduzindo perdas
 Pré-requisito: [Node.js](https://nodejs.org/) instalado.
 
 ```bash
-git clone <URL-DO-REPOSITORIO>
+git clone https://github.com/Grabiie/hemocontrol
 cd hemocontrol
 npm install
 npm start
@@ -65,11 +65,31 @@ Todas usam a senha `hemo123`. Cada perfil só acessa as funções que o diagrama
 | Usuário | Perfil | Pode fazer |
 |---|---|---|
 | `recepcao` | Recepcionista | Cadastrar doador |
-| `medico` | Médico | Realizar triagem |
-| `enfermeiro` | Enfermeiro | Realizar triagem e registrar doação |
-| `gestor` | Gestor | Consultar estoque, descartar bolsas vencidas e gerar relatório mensal |
+| `medico` | Médico | Realizar triagem e registrar inaptidão temporária |
+| `enfermeiro` | Enfermeiro | Realizar triagem e registrar doação (inclusive coleta interrompida) |
+| `gestor` | Gestor | Consultar estoque, registrar e atender solicitações, descartar bolsas vencidas e gerar relatório mensal |
 
 As contas também são criadas automaticamente na primeira vez que o servidor sobe.
+
+### Integração com hospitais (RF-07 e RNF-05)
+
+O sistema do hospital envia solicitações para `POST /api/integracao/solicitacoes`, autenticando-se com a chave de acesso no cabeçalho `X-Chave-Acesso`. O sistema do hospital é simulado; os hospitais de demonstração são:
+
+| Hospital | Chave de acesso |
+|---|---|
+| Hospital Santa Clara | `hsc-demo-7f3a9c` |
+| Hospital São Lucas | `hsl-demo-2b8e4d` |
+
+Exemplo (com o servidor rodando):
+
+```bash
+curl -X POST http://localhost:3000/api/integracao/solicitacoes \
+  -H "Content-Type: application/json" \
+  -H "X-Chave-Acesso: hsl-demo-2b8e4d" \
+  -d '{"tipoSanguineo": "A_POSITIVO", "quantidade": 3}'
+```
+
+Sem a chave, a resposta é `401`; com uma chave inválida, `403`.
 
 Para rodar os testes das regras de negócio:
 
@@ -117,11 +137,13 @@ Em desenvolvimento. Implementação inicial focada no fluxo principal do banco d
 - [x] Triagem com critérios de aptidão (RF-03, RN-02, RN-03, RN-06)
 - [x] Registro de doação e geração de bolsa, com limite de volume por peso (RF-04, RN-04, RN-05, RN-07)
 - [x] Consulta de estoque com alerta de estoque crítico (RF-05, RF-06)
-- [ ] Solicitações de hospitais (RF-07, RF-08)
+- [x] Solicitações de hospitais, manuais e por integração com chave de acesso (RF-07, RNF-05)
+- [x] Atendimento de solicitações priorizando a validade mais próxima, com atendimento parcial (RF-08)
 - [x] Listagem e descarte de bolsas vencidas (RF-09)
 - [x] Relatório mensal com destino das bolsas e exportação em PDF e CSV (RF-10)
+- [x] Registro de inaptidão temporária (RF-11)
 - [x] Histórico de doações por doador (RF-12)
-- [ ] Registro de inaptidão temporária (RF-11)
+- [x] Doação cancelada por coleta interrompida (fluxo alternativo de RF-04)
 
 ## Convenção de commits
 
