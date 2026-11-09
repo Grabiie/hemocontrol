@@ -55,3 +55,16 @@ test('RF-10: relatório conta só doações e descartes do mês escolhido', () =
 test('RF-10: relatório rejeita mês inválido', () => {
   assert.throws(() => new RelatorioMensal({ mes: 13, ano: 2026 }), /Mês inválido/);
 });
+
+test('RF-05: lista as bolsas que vencem nos próximos 7 dias, da validade mais próxima para a mais distante', () => {
+  const estoque = new Estoque();
+  const venceEm2 = bolsa(33);
+  const venceEm6 = bolsa(29);
+  [bolsa(5), venceEm6, bolsa(40), venceEm2, bolsa(27)].forEach((b) => estoque.adicionarBolsa(b));
+
+  assert.equal(Estoque.DIAS_ALERTA_VENCIMENTO, 7);
+  assert.deepEqual(estoque.listarProximasDoVencimento(HOJE).map((b) => b.codigo), [venceEm2.codigo, venceEm6.codigo]);
+
+  venceEm2.marcarEntregue();
+  assert.equal(estoque.listarProximasDoVencimento(HOJE).length, 1);
+});

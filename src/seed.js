@@ -32,6 +32,13 @@ for (const tipo of vencidas) {
   salvarBolsaAvulsa(new BolsaSangue({ tipoSanguineo: tipo, volumeMl: 450, dataColeta: somarDias(new Date(), -40) }));
 }
 
+// Bolsas perto de vencer (coletadas há 30 a 33 dias), para demonstrar o alerta de vencimento (RF-05)
+const pertoDeVencer = [[TipoSanguineo.A_POSITIVO, 33], [TipoSanguineo.O_POSITIVO, 31], [TipoSanguineo.B_POSITIVO, 30]];
+for (const [tipo, diasAtras] of pertoDeVencer) {
+  salvarBolsaAvulsa(new BolsaSangue({ tipoSanguineo: tipo, volumeMl: 450, dataColeta: somarDias(new Date(), -diasAtras) }));
+  total++;
+}
+
 console.log(`${total} bolsas de exemplo adicionadas ao estoque.`);
 console.log(`${vencidas.length} bolsas vencidas adicionadas para demonstrar o descarte.`);
 

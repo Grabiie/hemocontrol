@@ -6,6 +6,9 @@ export class Estoque {
   // RF-06: limite para o alerta de estoque crítico
   static LIMITE_CRITICO = 10;
 
+  // RF-05: bolsas que vencem dentro deste prazo são destacadas para uso prioritário
+  static DIAS_ALERTA_VENCIMENTO = 7;
+
   #bolsas = [];
 
   adicionarBolsa(bolsa) {
@@ -20,6 +23,14 @@ export class Estoque {
 
   estaCritico(tipo, dataReferencia = new Date()) {
     return this.consultarDisponiveis(tipo, dataReferencia).length < Estoque.LIMITE_CRITICO;
+  }
+
+  // RF-05: bolsas disponíveis que vencem nos próximos dias, da validade mais próxima para a mais distante
+  listarProximasDoVencimento(dataReferencia = new Date()) {
+    const limite = new Date(dataReferencia.getTime() + Estoque.DIAS_ALERTA_VENCIMENTO * 24 * 60 * 60 * 1000);
+    return this.#bolsas
+      .filter((b) => b.status === StatusBolsa.DISPONIVEL && !b.estaVencida(dataReferencia) && b.dataValidade <= limite)
+      .sort((a, b) => a.dataValidade - b.dataValidade);
   }
 
   // Bolsas ainda marcadas como disponíveis, mas com a validade expirada (RN-04)
