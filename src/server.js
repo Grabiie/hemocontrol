@@ -109,6 +109,20 @@ app.post('/api/doacoes', exigir(Enfermeiro), (req, res) => {
     return res.status(409).json({ erro: 'Esta triagem já possui uma doação registrada.' });
   }
 
+  // A triagem pode ter sido feita antes de outra doação ou de uma inaptidão:
+  // confere de novo a RN-02, a RN-03 e a inaptidão temporária (RF-11) no momento da coleta.
+  const agora = new Date();
+  const doador = triagem.doador;
+  const impedimentos = [
+    ...repo.inaptidoesDoDoador(doador.id)
+      .filter((i) => i.estaVigente(agora))
+      .map((i) => `Inaptidão temporária até ${i.dataFim.toLocaleDateString('pt-BR')}: ${i.motivo} (RF-11).`),
+    ...doador.listarImpedimentos(agora, repo.datasDoacoesDoDoador(doador.id)),
+  ];
+  if (impedimentos.length > 0) {
+    return res.status(409).json({ erro: `Doação não autorizada. ${impedimentos.join(' ')}` });
+  }
+
   const doacao = req.usuario.registrarDoacao(triagem, volumeMl, coletaInterrompida);
   const bolsa = doacao.gerarBolsa(); // null quando a doação foi cancelada
   const id = repo.salvarDoacaoComBolsa(doacao, bolsa);
