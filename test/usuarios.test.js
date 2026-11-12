@@ -65,3 +65,33 @@ test('RF-02: recepcionista confere o doador no cadastro', async () => {
   assert.doesNotThrow(() => recepcionista.cadastrarDoador(doador));
   assert.throws(() => recepcionista.cadastrarDoador({ nome: 'qualquer' }), /dados do doador/);
 });
+
+test('RF-13: recepcionista corrige dados do doador mantendo id e CPF', async () => {
+  const { Doador } = await import('../src/models/Doador.js');
+  const recepcionista = new Recepcionista(dados('recepcao'));
+  const atual = new Doador({
+    id: 3, nome: 'Maria', cpf: '529.982.247-25', dataNascimento: '1995-04-12', sexo: 'FEMININO', tipoSanguineo: 'O_NEGATIVO',
+  });
+
+  const editado = recepcionista.editarDoador(atual, { nome: 'Maria Souza', telefone: '(11) 98765-4321', cpf: '111.444.777-35' }, true);
+  assert.equal(editado.id, 3);
+  assert.equal(editado.cpf, '52998224725');
+  assert.equal(editado.nome, 'Maria Souza');
+  assert.equal(editado.telefone, '11987654321');
+
+  assert.throws(() => recepcionista.editarDoador(atual, { telefone: '9876' }, false), /Telefone inválido/);
+});
+
+test('RN-08: sexo e tipo sanguíneo só mudam enquanto o doador não tiver doações', async () => {
+  const { Doador } = await import('../src/models/Doador.js');
+  const recepcionista = new Recepcionista(dados('recepcao'));
+  const atual = new Doador({
+    id: 3, nome: 'Maria', cpf: '529.982.247-25', dataNascimento: '1995-04-12', sexo: 'FEMININO', tipoSanguineo: 'O_NEGATIVO',
+  });
+
+  assert.equal(recepcionista.editarDoador(atual, { tipoSanguineo: 'A_POSITIVO' }, false).tipoSanguineo, 'A_POSITIVO');
+  assert.throws(() => recepcionista.editarDoador(atual, { tipoSanguineo: 'A_POSITIVO' }, true), /RN-08/);
+  assert.throws(() => recepcionista.editarDoador(atual, { sexo: 'MASCULINO' }, true), /RN-08/);
+  // Reenviar os mesmos valores não é alteração
+  assert.equal(recepcionista.editarDoador(atual, { sexo: 'FEMININO', tipoSanguineo: 'O_NEGATIVO' }, true).sexo, 'FEMININO');
+});
