@@ -115,3 +115,11 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 ### RN-08
 **Nome:** Correção de sexo e tipo sanguíneo
 **Descrição:** O sexo e o tipo sanguíneo de um doador só podem ser corrigidos enquanto ele não tiver doações registradas, porque definem o intervalo entre doações (RN-03) e o tipo das bolsas já geradas.
+
+### RN-09
+**Nome:** Validade da triagem
+**Descrição:** Uma triagem apta só libera a coleta no mesmo dia em que foi realizada. Em outro dia, o doador precisa passar por uma nova triagem.
+
+### RN-10
+**Nome:** Triagens repetidas
+**Descrição:** O sistema não deve registrar uma nova triagem do mesmo doador, no mesmo dia, com exatamente a mesma medição (peso, pressão e hemoglobina) da triagem anterior. Com valores diferentes a nova triagem é aceita, até o limite de 3 triagens por doador por dia.

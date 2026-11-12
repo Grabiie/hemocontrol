@@ -133,12 +133,14 @@ MedicaoClinica
 -----------------------------------
 + listarAlteracoes(sexo: Sexo): List<String>
 + calcularVolumeMaximo(sexo: Sexo): int
++ equals(outra: MedicaoClinica): boolean
 + estaDentroDosLimites(sexo: Sexo): boolean
 ```
 
 ```
 Triagem
 -----------------------------------
++ LIMITE_DIARIO: int = 3 {readOnly}
 - id: int
 - dataHora: Date
 - apto: boolean = false
@@ -146,6 +148,8 @@ Triagem
 -----------------------------------
 + avaliar(datasDoacoes: List<Date>, inaptidoes: List<InaptidaoTemporaria>): boolean
 + estaApta(): boolean
++ ehDoDia(data: Date): boolean
++ repeteMedicaoDe(outra: Triagem): boolean
 + getMotivos(): List<String>
 ```
 
@@ -292,6 +296,8 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 | RN-05 (triagem obrigatória) | associação Triagem 1 → 0..1 Doacao |
 | RN-07 (volume da doação) | `Doacao.VOLUME_MINIMO_ML`, `Doacao.VOLUME_MAXIMO_ML` e `MedicaoClinica.calcularVolumeMaximo()` |
 | RN-06 (critérios clínicos) | `MedicaoClinica.estaDentroDosLimites()` |
+| RN-09 (triagem do dia) | `Triagem.ehDoDia()` |
+| RN-10 (triagem repetida e limite diário) | `Triagem.LIMITE_DIARIO`, `Triagem.repeteMedicaoDe()` e `MedicaoClinica.equals()` |
 | RF-13 e RN-08 (editar doador) | `Recepcionista.editarDoador()` |
 | RF-05 (bolsas perto de vencer) | `Estoque.DIAS_ALERTA_VENCIMENTO` e `Estoque.listarProximasDoVencimento()` |
 | RF-06 (alerta de estoque) | `Estoque.LIMITE_CRITICO` e `estaCritico()` |

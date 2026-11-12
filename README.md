@@ -36,12 +36,12 @@ O objetivo é substituir controles manuais (papel e planilhas), reduzindo perdas
 
 - Node.js (ES Modules)
 - Express
-- SQLite
+- SQLite (módulo `node:sqlite`, nativo do Node.js)
 - HTML/CSS/JavaScript para a interface
 
 ## Como executar
 
-Pré-requisito: [Node.js](https://nodejs.org/) instalado.
+Pré-requisito: [Node.js](https://nodejs.org/) 22.13 ou mais novo (recomendado: a versão LTS mais recente). O banco usa o SQLite que já vem no Node, então o `npm install` não precisa compilar nada.
 
 ```bash
 git clone https://github.com/Grabiie/hemocontrol
