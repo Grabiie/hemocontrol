@@ -158,6 +158,14 @@ button:hover { filter: brightness(1.1); }
 .motivos li { margin-bottom: 3px; }
 
 .dica-campo { margin: -4px 0 0; font-size: 0.78rem; color: var(--suave); }
+.dica-campo.sucesso { color: var(--verde); }
+.dica-campo.erro { color: var(--vermelho); }
+
+/* Campos travados até o CPF ser conferido */
+fieldset.bloqueavel { display: flex; flex-direction: column; gap: 10px; min-width: 0; margin: 0; padding: 0; border: 0; }
+fieldset.bloqueavel:disabled { opacity: 0.5; }
+fieldset.bloqueavel:disabled button { cursor: not-allowed; filter: none; }
+label.check:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
 
 .legenda { margin: -6px 0 16px; color: var(--suave); font-size: 0.9rem; }
 

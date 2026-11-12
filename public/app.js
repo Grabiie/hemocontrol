@@ -52,6 +52,131 @@ function aplicarMascara(seletor, formatar) {
 aplicarMascara('input[name=cpf]', formatarCpf);
 aplicarMascara('input[name=telefone]', formatarTelefone);
 
+// ---------- Conferências antes de preencher o formulário ----------
+
+// Mesmo cálculo dos dígitos verificadores feito em Doador.validarCpf()
+function cpfValido(cpf) {
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  const digito = (tamanho) => {
+    let soma = 0;
+    for (let i = 0; i < tamanho; i++) soma += Number(cpf[i]) * (tamanho + 1 - i);
+    const resto = (soma * 10) % 11;
+    return resto === 10 ? 0 : resto;
+  };
+  return digito(9) === Number(cpf[9]) && digito(10) === Number(cpf[10]);
+}
+
+function idadeHoje(dataNascimento) {
+  if (!dataNascimento) return null;
+  const [ano, mes, dia] = dataNascimento.split('-').map(Number);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - ano;
+  if (hoje.getMonth() + 1 < mes || (hoje.getMonth() + 1 === mes && hoje.getDate() < dia)) idade--;
+  return idade;
+}
+
+// RN-02: o consentimento do responsável só faz sentido para doadores de 16 e 17 anos
+function atualizarConsentimento(form) {
+  const idade = idadeHoje(form.dataNascimento.value);
+  const caixa = form.consentimentoResponsavel;
+  caixa.disabled = !(idade === 16 || idade === 17);
+  if (caixa.disabled) caixa.checked = false;
+}
+
+for (const id of ['form-doador', 'form-editar-doador']) {
+  const form = document.getElementById(id);
+  form.dataNascimento.addEventListener('input', () => atualizarConsentimento(form));
+  form.addEventListener('reset', () => setTimeout(() => atualizarConsentimento(form)));
+}
+
+// Consulta o CPF assim que os 11 dígitos são digitados e só então libera os demais campos
+function conferirCpfAoDigitar({ form, campos, status, mensagemInicial, existe, naoExiste, url = (cpf) => `/api/doadores/${cpf}` }) {
+  const campoCpf = form.cpf;
+  const travar = (texto, tipo = '') => {
+    campos.disabled = true;
+    status.textContent = texto;
+    status.className = `dica-campo ${tipo}`;
+  };
+
+  campoCpf.addEventListener('input', async () => {
+    const cpf = campoCpf.value.replace(/\D/g, '');
+    if (cpf.length < 11) return travar(mensagemInicial);
+    if (!cpfValido(cpf)) return travar('CPF inválido. Confira os números digitados.', 'erro');
+
+    travar('Conferindo CPF...');
+    const resposta = await fetch(url(cpf));
+    if (campoCpf.value.replace(/\D/g, '') !== cpf) return; // o CPF mudou durante a consulta
+    if (resposta.status === 401) return mostrarLogin();
+    if (resposta.status === 404) return naoExiste(travar);
+    if (!resposta.ok) {
+      const corpo = await resposta.json().catch(() => ({}));
+      return travar(corpo.erro ?? 'Não foi possível conferir o CPF agora.', 'erro');
+    }
+    existe(await resposta.json(), travar);
+  });
+
+  form.addEventListener('reset', () => setTimeout(() => travar(mensagemInicial)));
+}
+
+// RF-02: não deixa cadastrar o mesmo CPF duas vezes
+conferirCpfAoDigitar({
+  form: document.getElementById('form-doador'),
+  campos: document.getElementById('campos-doador'),
+  status: document.getElementById('status-cpf-doador'),
+  mensagemInicial: 'Informe o CPF para liberar o restante do cadastro.',
+  existe: (doador, travar) => travar(
+    `CPF já cadastrado para ${doador.nome}. Para corrigir os dados, use "Buscar e editar doador".`, 'erro'),
+  naoExiste: (travar) => {
+    travar('CPF disponível.', 'sucesso');
+    document.getElementById('campos-doador').disabled = false;
+    document.querySelector('#form-doador [name=nome]').focus();
+  },
+});
+
+// RF-03: a triagem só começa para um doador já cadastrado
+conferirCpfAoDigitar({
+  form: document.getElementById('form-triagem'),
+  campos: document.getElementById('campos-triagem'),
+  status: document.getElementById('status-cpf-triagem'),
+  mensagemInicial: 'Informe o CPF de um doador cadastrado para liberar a triagem.',
+  existe: (doador, travar) => {
+    travar(`Doador: ${doador.nome} (${TIPOS[doador.tipoSanguineo]}).`, 'sucesso');
+    document.getElementById('campos-triagem').disabled = false;
+  },
+  naoExiste: (travar) => travar('Doador não cadastrado. O cadastro é feito pela recepção antes da triagem.', 'erro'),
+});
+
+// RF-04: a doação começa pelo CPF; o sistema acha a triagem apta e trava se não houver (RN-05)
+const DICA_VOLUME_PADRAO = 'Entre 300 e 495 mL, respeitando o limite pelo peso do doador.';
+conferirCpfAoDigitar({
+  form: document.getElementById('form-doacao'),
+  campos: document.getElementById('campos-doacao'),
+  status: document.getElementById('status-cpf-doacao'),
+  mensagemInicial: 'Informe o CPF de um doador com triagem apta para liberar o registro.',
+  url: (cpf) => `/api/doadores/${cpf}/triagem-para-doacao`,
+  existe: (triagem, travar) => {
+    const form = document.getElementById('form-doacao');
+    form.triagemId.value = triagem.id;
+    // RN-07: ajusta o campo de volume ao máximo permitido para este doador
+    form.volumeMl.max = triagem.volumeMaximoMl;
+    form.volumeMl.value = Math.min(450, triagem.volumeMaximoMl);
+    document.getElementById('dica-volume').textContent =
+      `Máximo para este doador: ${triagem.volumeMaximoMl} mL (mínimo de 300 mL).`;
+    travar(`${triagem.doador.nome} (${TIPOS[triagem.doador.tipoSanguineo]}) — triagem nº ${triagem.id}, apta.`, 'sucesso');
+    document.getElementById('campos-doacao').disabled = false;
+  },
+  naoExiste: (travar) => travar('Doador não cadastrado. O cadastro é feito pela recepção.', 'erro'),
+});
+document.getElementById('form-doacao').addEventListener('reset', () => {
+  const form = document.getElementById('form-doacao');
+  setTimeout(() => {
+    form.triagemId.value = '';
+    form.volumeMl.max = 495;
+    form.volumeMl.min = 300;
+    document.getElementById('dica-volume').textContent = DICA_VOLUME_PADRAO;
+  });
+});
+
 function mostrar(id, texto, tipo) {
   const el = document.getElementById(id);
   el.textContent = texto;
@@ -82,8 +207,10 @@ document.getElementById('form-doador').addEventListener('submit', async (e) => {
   try {
     const doador = await enviar('/api/doadores', dados);
     mostrar('msg-doador', `Doador ${doador.nome} cadastrado (tipo ${TIPOS[doador.tipoSanguineo]}).`, 'sucesso');
-    document.querySelector('#form-triagem [name=cpf]').value = formatarCpf(doador.cpf);
     e.target.reset();
+    const cpfTriagem = document.querySelector('#form-triagem [name=cpf]');
+    cpfTriagem.value = formatarCpf(doador.cpf);
+    cpfTriagem.dispatchEvent(new Event('input'));
   } catch (erro) {
     mostrar('msg-doador', erro.message, 'erro');
   }
@@ -99,14 +226,12 @@ document.getElementById('form-triagem').addEventListener('submit', async (e) => 
     const triagem = await enviar('/api/triagens', dadosDoForm(e.target));
     if (triagem.apto) {
       mostrar('msg-triagem', `Triagem nº ${triagem.id}: doador APTO.`, 'sucesso');
-      document.querySelector('#form-doacao [name=triagemId]').value = triagem.id;
-
-      // RN-07: ajusta o campo de volume ao máximo permitido para este doador
-      const campoVolume = document.querySelector('#form-doacao [name=volumeMl]');
-      campoVolume.max = triagem.volumeMaximoMl;
-      campoVolume.value = Math.min(450, triagem.volumeMaximoMl);
-      document.getElementById('dica-volume').textContent =
-        `Máximo para este doador: ${triagem.volumeMaximoMl} mL (mínimo de 300 mL).`;
+      // O enfermeiro que fez a triagem já pode seguir para a coleta com o mesmo doador
+      if (usuarioAtual?.perfil === 'ENFERMEIRO') {
+        const cpfDoacao = document.querySelector('#form-doacao [name=cpf]');
+        cpfDoacao.value = formatarCpf(triagem.doador.cpf);
+        cpfDoacao.dispatchEvent(new Event('input'));
+      }
     } else {
       mostrar('msg-triagem', `Triagem nº ${triagem.id}: doador INAPTO.`, 'erro');
       const lista = document.createElement('ul');
@@ -155,9 +280,7 @@ document.getElementById('form-doacao').addEventListener('submit', async (e) => {
       const validade = new Date(bolsa.dataValidade).toLocaleDateString('pt-BR');
       mostrar('msg-doacao', `Bolsa ${bolsa.codigo} (${TIPOS[bolsa.tipoSanguineo]}) gerada, válida até ${validade}.`, 'sucesso');
     }
-    e.target.triagemId.value = '';
-    e.target.coletaInterrompida.checked = false;
-    e.target.volumeMl.min = 300;
+    e.target.reset();
   } catch (erro) {
     mostrar('msg-doacao', erro.message, 'erro');
   }
@@ -620,6 +743,7 @@ function abrirEdicao(d) {
   form.tipoSanguineo.value = d.tipoSanguineo;
   form.telefone.value = formatarTelefone(d.telefone ?? '');
   form.consentimentoResponsavel.checked = d.consentimentoResponsavel;
+  atualizarConsentimento(form);
   // Campos desabilitados não são enviados, então o servidor mantém os valores atuais
   form.sexo.disabled = d.possuiDoacoes;
   form.tipoSanguineo.disabled = d.possuiDoacoes;
