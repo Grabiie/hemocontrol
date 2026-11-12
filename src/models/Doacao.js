@@ -16,6 +16,10 @@ export class Doacao {
     if (!triagem || !triagem.estaApta()) {
       throw new Error('A doação exige uma triagem com resultado "apto" (RN-05).');
     }
+    // RN-09: a coleta acontece no mesmo dia da triagem
+    if (id === null && !triagem.ehDoDia(dataHora)) {
+      throw new Error(`A triagem é de ${triagem.dataHora.toLocaleDateString('pt-BR')}; a coleta exige uma triagem do mesmo dia (RN-09).`);
+    }
 
     const volume = Number(volumeMl);
     if (!Number.isInteger(volume) || volume < 0 || (volume === 0 && !cancelada)) {

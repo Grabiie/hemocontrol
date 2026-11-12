@@ -222,6 +222,10 @@ document.getElementById('form-triagem').addEventListener('submit', async (e) => 
   const formInaptidao = document.getElementById('form-inaptidao');
   formInaptidao.hidden = true;
   mostrar('msg-inaptidao', '', '');
+  // Evita duplo clique: o botão fica travado até a resposta chegar
+  const botao = e.target.querySelector('button[type=submit]');
+  if (botao.disabled) return;
+  botao.disabled = true;
   try {
     const triagem = await enviar('/api/triagens', dadosDoForm(e.target));
     if (triagem.apto) {
@@ -251,6 +255,8 @@ document.getElementById('form-triagem').addEventListener('submit', async (e) => 
     }
   } catch (erro) {
     mostrar('msg-triagem', erro.message, 'erro');
+  } finally {
+    botao.disabled = false;
   }
 });
 

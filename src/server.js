@@ -10,6 +10,7 @@ import { Enfermeiro } from './models/Enfermeiro.js';
 import { Gestor } from './models/Gestor.js';
 import { Usuario } from './models/Usuario.js';
 import { Medico } from './models/Medico.js';
+import { Triagem } from './models/Triagem.js';
 import { Solicitacao } from './models/Solicitacao.js';
 import { TipoSanguineo, ROTULO_TIPO } from './models/enums.js';
 import * as repo from './repositorios.js';
@@ -110,6 +111,22 @@ app.post('/api/triagens', exigir(ProfissionalDeSaude), (req, res) => {
   if (!doador) return res.status(404).json({ erro: 'Doador não cadastrado.' });
 
   const triagem = req.usuario.realizarTriagem(doador, medicao);
+
+  // RN-10: evita triagens repetidas por cliques seguidos e limita as triagens do dia
+  const doDia = repo.triagensDoDoadorNoDia(doador.id, triagem.dataHora);
+  const ultima = doDia[0];
+  if (ultima && triagem.repeteMedicaoDe(ultima)) {
+    const hora = ultima.dataHora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return res.status(409).json({
+      erro: `Triagem nº ${ultima.id}, feita hoje às ${hora}, já tem exatamente esta medição. Altere os valores se o doador foi reavaliado (RN-10).`,
+    });
+  }
+  if (doDia.length >= Triagem.LIMITE_DIARIO) {
+    return res.status(429).json({
+      erro: `Limite de ${Triagem.LIMITE_DIARIO} triagens por dia atingido para ${doador.nome}. Uma nova triagem só amanhã (RN-10).`,
+    });
+  }
+
   triagem.avaliar(repo.datasDoacoesDoDoador(doador.id), repo.inaptidoesDoDoador(doador.id));
   res.status(201).json(repo.salvarTriagem(triagem));
 });
@@ -150,7 +167,7 @@ app.get('/api/doadores/:cpf/triagem-para-doacao', exigir(Enfermeiro), (req, res)
   }
   const triagem = repo.triagemAptaPendente(doador.id);
   if (!triagem) {
-    return res.status(409).json({ erro: `${doador.nome} não tem triagem apta aguardando coleta. Faça a triagem antes (RN-05).` });
+    return res.status(409).json({ erro: `${doador.nome} não tem triagem apta de hoje aguardando coleta. Faça a triagem antes (RN-05 e RN-09).` });
   }
   res.json(triagem);
 });

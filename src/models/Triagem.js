@@ -1,7 +1,11 @@
 import { MedicaoClinica } from './MedicaoClinica.js';
 import { Doacao } from './Doacao.js';
+import { mesmoDia } from './datas.js';
 
 export class Triagem {
+  // RN-10: no máximo 3 triagens por doador no mesmo dia
+  static LIMITE_DIARIO = 3;
+
   #id;
   #dataHora;
   #apto;
@@ -43,6 +47,16 @@ export class Triagem {
 
   estaApta() {
     return this.#apto;
+  }
+
+  // RN-09: a triagem só libera a coleta no mesmo dia em que foi feita
+  ehDoDia(data = new Date()) {
+    return mesmoDia(this.#dataHora, data);
+  }
+
+  // RN-10: outra triagem do mesmo dia com exatamente a mesma medição
+  repeteMedicaoDe(outra) {
+    return mesmoDia(this.#dataHora, outra.dataHora) && this.#medicao.equals(outra.medicao);
   }
 
   getMotivos() {

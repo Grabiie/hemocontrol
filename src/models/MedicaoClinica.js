@@ -69,6 +69,15 @@ export class MedicaoClinica {
     return Math.floor(this.#peso * ML_POR_KG[sexo]);
   }
 
+  // RN-10: usada para impedir que a mesma medição seja registrada duas vezes
+  equals(outra) {
+    return outra instanceof MedicaoClinica
+      && this.#peso === outra.peso
+      && this.#pressaoSistolica === outra.pressaoSistolica
+      && this.#pressaoDiastolica === outra.pressaoDiastolica
+      && this.#hemoglobina === outra.hemoglobina;
+  }
+
   estaDentroDosLimites(sexo) {
     return this.listarAlteracoes(sexo).length === 0;
   }
