@@ -123,6 +123,40 @@ export function buscarDoadorPorId(id) {
   return linha ? linhaParaDoador(linha) : null;
 }
 
+// RF-13: atualiza os dados cadastrais (o CPF não muda)
+export function atualizarDoador(doador) {
+  db.prepare(
+    `UPDATE doador SET nome = ?, data_nascimento = ?, sexo = ?, tipo_sanguineo = ?, telefone = ?, consentimento_responsavel = ?
+     WHERE id = ?`,
+  ).run(
+    doador.nome,
+    doador.dataNascimento.toISOString().slice(0, 10),
+    doador.sexo,
+    doador.tipoSanguineo,
+    doador.telefone,
+    doador.consentimentoResponsavel ? 1 : 0,
+    doador.id,
+  );
+  return buscarDoadorPorId(doador.id);
+}
+
+// RF-13: busca por parte do nome (sem diferenciar acentos e maiúsculas) ou do CPF
+const semAcento = (texto) => String(texto).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+export function buscarDoadores(texto, limite = 20) {
+  const termo = String(texto ?? '').trim();
+  if (termo.length < 2) return [];
+  const digitos = termo.replace(/\D/g, '');
+  const buscaPorCpf = digitos.length >= 3 && /^[\d.\-\s]+$/.test(termo);
+
+  return db
+    .prepare('SELECT * FROM doador ORDER BY nome')
+    .all()
+    .filter((linha) => (buscaPorCpf ? linha.cpf.includes(digitos) : semAcento(linha.nome).includes(semAcento(termo))))
+    .slice(0, limite)
+    .map(linhaParaDoador);
+}
+
 export function buscarDoadorPorCpf(cpf) {
   const linha = db.prepare('SELECT * FROM doador WHERE cpf = ?').get(String(cpf).replace(/\D/g, ''));
   return linha ? linhaParaDoador(linha) : null;

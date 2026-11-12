@@ -61,6 +61,24 @@ app.post('/api/doadores', exigir(Recepcionista), (req, res) => {
   res.status(201).json(repo.salvarDoador(doador));
 });
 
+// RF-13 — Buscar doadores por nome ou CPF (Recepcionista)
+app.get('/api/doadores', exigir(Recepcionista), (req, res) => {
+  res.json(repo.buscarDoadores(req.query.busca).map((d) => ({
+    ...d.toJSON(),
+    possuiDoacoes: repo.datasDoacoesDoDoador(d.id).length > 0,
+  })));
+});
+
+// RF-13 — Editar dados cadastrais do doador (Recepcionista)
+app.put('/api/doadores/:id', exigir(Recepcionista), (req, res) => {
+  const atual = repo.buscarDoadorPorId(Number(req.params.id));
+  if (!atual) return res.status(404).json({ erro: 'Doador não encontrado.' });
+
+  const possuiDoacoes = repo.datasDoacoesDoDoador(atual.id).length > 0;
+  const atualizado = req.usuario.editarDoador(atual, req.body ?? {}, possuiDoacoes);
+  res.json({ ...repo.atualizarDoador(atualizado).toJSON(), possuiDoacoes });
+});
+
 app.get('/api/doadores/:cpf', exigir(Recepcionista, ProfissionalDeSaude), (req, res) => {
   const doador = repo.buscarDoadorPorCpf(req.params.cpf);
   if (!doador) return res.status(404).json({ erro: 'Doador não encontrado.' });
