@@ -1,12 +1,28 @@
-import Database from 'better-sqlite3';
+// SQLite nativo do Node (22.13 ou mais novo): não precisa compilar nada no npm install
+import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const raiz = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const caminho = process.env.HEMOCONTROL_DB ?? path.join(raiz, 'hemocontrol.db');
 
-export const db = new Database(caminho);
-db.pragma('foreign_keys = ON');
+export const db = new DatabaseSync(caminho);
+db.exec('PRAGMA foreign_keys = ON');
+
+// Executa a função dentro de uma transação: grava tudo ou nada
+export function transacao(funcao) {
+  return (...args) => {
+    db.exec('BEGIN');
+    try {
+      const resultado = funcao(...args);
+      db.exec('COMMIT');
+      return resultado;
+    } catch (erro) {
+      db.exec('ROLLBACK');
+      throw erro;
+    }
+  };
+}
 
 db.exec(`
   -- Uma tabela para toda a hierarquia de Usuario; a coluna "perfil" indica a subclasse

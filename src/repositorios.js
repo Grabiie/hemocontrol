@@ -1,4 +1,4 @@
-import { db } from './database.js';
+import { db, transacao } from './database.js';
 import { Doador } from './models/Doador.js';
 import { Triagem } from './models/Triagem.js';
 import { BolsaSangue } from './models/BolsaSangue.js';
@@ -215,17 +215,25 @@ export function buscarTriagem(id) {
   });
 }
 
-// Triagem apta mais recente do doador que ainda não virou doação (RN-05)
-export function triagemAptaPendente(doadorId) {
-  const linha = db
+// Triagens do doador feitas no mesmo dia, da mais recente para a mais antiga (RN-09 e RN-10)
+export function triagensDoDoadorNoDia(doadorId, data = new Date()) {
+  const inicio = new Date(data);
+  inicio.setHours(0, 0, 0, 0);
+  const fim = new Date(inicio);
+  fim.setDate(fim.getDate() + 1);
+  return db
     .prepare(
-      `SELECT t.id FROM triagem t
-       WHERE t.doador_id = ? AND t.apto = 1
-         AND NOT EXISTS (SELECT 1 FROM doacao d WHERE d.triagem_id = t.id)
-       ORDER BY t.data_hora DESC, t.id DESC LIMIT 1`,
+      `SELECT id FROM triagem WHERE doador_id = ? AND data_hora >= ? AND data_hora < ?
+       ORDER BY data_hora DESC, id DESC`,
     )
-    .get(doadorId);
-  return linha ? buscarTriagem(linha.id) : null;
+    .all(doadorId, inicio.toISOString(), fim.toISOString())
+    .map((linha) => buscarTriagem(linha.id));
+}
+
+// Triagem apta de hoje que ainda não virou doação (RN-05 e RN-09)
+export function triagemAptaPendente(doadorId) {
+  return triagensDoDoadorNoDia(doadorId)
+    .find((t) => t.estaApta() && !triagemJaPossuiDoacao(t.id)) ?? null;
 }
 
 export function triagemJaPossuiDoacao(triagemId) {
@@ -250,7 +258,7 @@ function inserirBolsa(bolsa, doacaoId = null) {
 }
 
 // Salva a doação e a bolsa gerada numa única transação
-export const salvarDoacaoComBolsa = db.transaction((doacao, bolsa) => {
+export const salvarDoacaoComBolsa = transacao((doacao, bolsa) => {
   const { lastInsertRowid } = db
     .prepare('INSERT INTO doacao (triagem_id, data_hora, volume_ml, cancelada) VALUES (?, ?, ?, ?)')
     .run(doacao.triagem.id, doacao.dataHora.toISOString(), doacao.volumeMl, doacao.cancelada ? 1 : 0);
@@ -288,7 +296,7 @@ export function carregarEstoque() {
 }
 
 // RF-09: grava o novo status e a data de descarte das bolsas
-export const salvarDescartes = db.transaction((bolsas) => {
+export const salvarDescartes = transacao((bolsas) => {
   const atualizar = db.prepare('UPDATE bolsa_sangue SET status = ?, data_descarte = ? WHERE codigo = ?');
   for (const bolsa of bolsas) {
     atualizar.run(bolsa.status, bolsa.dataDescarte?.toISOString() ?? null, bolsa.codigo);
@@ -456,7 +464,7 @@ export function listarSolicitacoes() {
 }
 
 // RF-08: grava o atendimento e marca as bolsas como entregues a esta solicitação
-export const salvarAtendimento = db.transaction((solicitacao) => {
+export const salvarAtendimento = transacao((solicitacao) => {
   db.prepare('UPDATE solicitacao SET status = ?, data_atendimento = ? WHERE id = ?')
     .run(solicitacao.status, solicitacao.dataAtendimento.toISOString(), solicitacao.id);
   const atualizar = db.prepare('UPDATE bolsa_sangue SET status = ?, solicitacao_id = ? WHERE codigo = ?');
