@@ -63,7 +63,7 @@ test('RF-11: triagem considera a inaptidão vigente e ignora a vencida', () => {
 // ---------- Cancelamento de doação (fluxo 3a) ----------
 
 test('Coleta interrompida: doação cancelada não gera bolsa e aceita volume abaixo do mínimo', () => {
-  const t = triagem();
+  const t = triagem(medicaoNormal, new Date()); // RN-09: a coleta é no mesmo dia da triagem
   t.avaliar();
   const doacao = enfermeiro.registrarDoacao(t, 120, true);
   assert.equal(doacao.cancelada, true);
@@ -72,7 +72,7 @@ test('Coleta interrompida: doação cancelada não gera bolsa e aceita volume ab
 });
 
 test('Coleta normal continua exigindo a RN-07', () => {
-  const t = triagem();
+  const t = triagem(medicaoNormal, new Date());
   t.avaliar();
   assert.throws(() => enfermeiro.registrarDoacao(t, 120, false), /RN-07/);
   assert.throws(() => enfermeiro.registrarDoacao(t, 600, true), /RN-07/);

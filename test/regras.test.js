@@ -127,7 +127,8 @@ test('RN-07: volume máximo é de 8 mL/kg para mulheres e 9 mL/kg para homens', 
 });
 
 test('RN-07: doação recusa volume abaixo de 300 mL ou acima de 495 mL', () => {
-  const triagem = new Triagem({ doador: doador(), medicao: { ...medicaoNormal, peso: 80 }, dataHora: HOJE });
+  // Triagem de agora: a doação criada logo abaixo também é de hoje (RN-09)
+  const triagem = new Triagem({ doador: doador(), medicao: { ...medicaoNormal, peso: 80 } });
   triagem.avaliar();
   assert.throws(() => new Doacao({ triagem, volumeMl: 299 }), /abaixo do mínimo de 300 mL/);
   assert.throws(() => new Doacao({ triagem, volumeMl: 600 }), /máximo permitido para este doador: 495 mL/);
@@ -135,7 +136,7 @@ test('RN-07: doação recusa volume abaixo de 300 mL ou acima de 495 mL', () => 
 });
 
 test('RN-07: doação recusa volume acima do limite pelo peso do doador', () => {
-  const triagem = new Triagem({ doador: doador(), medicao: { ...medicaoNormal, peso: 52 }, dataHora: HOJE });
+  const triagem = new Triagem({ doador: doador(), medicao: { ...medicaoNormal, peso: 52 } });
   triagem.avaliar();
   assert.throws(() => new Doacao({ triagem, volumeMl: 450 }), /máximo permitido para este doador: 416 mL/);
   assert.equal(new Doacao({ triagem, volumeMl: 416 }).volumeMl, 416);
@@ -165,4 +166,24 @@ test('RN-03: próxima data de doação espera o limite anual liberar', () => {
   assert.deepEqual(proxima, somarDias(datas[0], 365));
   assert.equal(doador().podeDoarEm(proxima, datas), true);
   assert.equal(doador().podeDoarEm(somarDias(proxima, -1), datas), false);
+});
+
+test('RN-09: a coleta exige triagem do mesmo dia', () => {
+  const triagem = new Triagem({ doador: doador(), medicao: medicaoNormal, dataHora: HOJE });
+  triagem.avaliar();
+  assert.equal(triagem.ehDoDia(new Date('2026-11-10T18:00:00')), true);
+  assert.equal(triagem.ehDoDia(somarDias(HOJE, 1)), false);
+  assert.doesNotThrow(() => new Doacao({ triagem, volumeMl: 450, dataHora: new Date('2026-11-10T15:00:00') }));
+  assert.throws(() => new Doacao({ triagem, volumeMl: 450, dataHora: somarDias(HOJE, 1) }), /RN-09/);
+});
+
+test('RN-10: reconhece triagem repetida só no mesmo dia e com a mesma medição', () => {
+  const primeira = new Triagem({ doador: doador(), medicao: medicaoNormal, dataHora: HOJE });
+  const igual = new Triagem({ doador: doador(), medicao: { ...medicaoNormal }, dataHora: new Date('2026-11-10T10:05:00') });
+  const outroValor = new Triagem({ doador: doador(), medicao: { ...medicaoNormal, pressaoSistolica: 125 }, dataHora: HOJE });
+  const outroDia = new Triagem({ doador: doador(), medicao: medicaoNormal, dataHora: somarDias(HOJE, 1) });
+  assert.equal(igual.repeteMedicaoDe(primeira), true);
+  assert.equal(outroValor.repeteMedicaoDe(primeira), false);
+  assert.equal(outroDia.repeteMedicaoDe(primeira), false);
+  assert.equal(Triagem.LIMITE_DIARIO, 3);
 });
