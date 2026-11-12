@@ -215,6 +215,19 @@ export function buscarTriagem(id) {
   });
 }
 
+// Triagem apta mais recente do doador que ainda não virou doação (RN-05)
+export function triagemAptaPendente(doadorId) {
+  const linha = db
+    .prepare(
+      `SELECT t.id FROM triagem t
+       WHERE t.doador_id = ? AND t.apto = 1
+         AND NOT EXISTS (SELECT 1 FROM doacao d WHERE d.triagem_id = t.id)
+       ORDER BY t.data_hora DESC, t.id DESC LIMIT 1`,
+    )
+    .get(doadorId);
+  return linha ? buscarTriagem(linha.id) : null;
+}
+
 export function triagemJaPossuiDoacao(triagemId) {
   return Boolean(db.prepare('SELECT 1 FROM doacao WHERE triagem_id = ?').get(triagemId));
 }

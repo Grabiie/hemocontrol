@@ -128,6 +128,33 @@ app.post('/api/triagens/:id/inaptidao', exigir(Medico), (req, res) => {
   res.status(201).json(inaptidao);
 });
 
+// A triagem pode ter sido feita antes de outra doação ou de uma inaptidão:
+// confere de novo a RN-02, a RN-03 e a inaptidão temporária (RF-11) no momento da coleta.
+function impedimentosParaColeta(doador, agora = new Date()) {
+  return [
+    ...repo.inaptidoesDoDoador(doador.id)
+      .filter((i) => i.estaVigente(agora))
+      .map((i) => `Inaptidão temporária até ${i.dataFim.toLocaleDateString('pt-BR')}: ${i.motivo} (RF-11).`),
+    ...doador.listarImpedimentos(agora, repo.datasDoacoesDoDoador(doador.id)),
+  ];
+}
+
+// RF-04, passos 1 e 2 — Busca o doador pelo CPF e a triagem apta que libera a coleta (Enfermeiro)
+app.get('/api/doadores/:cpf/triagem-para-doacao', exigir(Enfermeiro), (req, res) => {
+  const doador = repo.buscarDoadorPorCpf(req.params.cpf);
+  if (!doador) return res.status(404).json({ erro: 'Doador não cadastrado.' });
+
+  const impedimentos = impedimentosParaColeta(doador);
+  if (impedimentos.length > 0) {
+    return res.status(409).json({ erro: `Doação não autorizada. ${impedimentos.join(' ')}` });
+  }
+  const triagem = repo.triagemAptaPendente(doador.id);
+  if (!triagem) {
+    return res.status(409).json({ erro: `${doador.nome} não tem triagem apta aguardando coleta. Faça a triagem antes (RN-05).` });
+  }
+  res.json(triagem);
+});
+
 // RF-04 — Registrar doação (Enfermeiro)
 app.post('/api/doacoes', exigir(Enfermeiro), (req, res) => {
   const { triagemId, volumeMl, coletaInterrompida } = req.body;
@@ -137,16 +164,10 @@ app.post('/api/doacoes', exigir(Enfermeiro), (req, res) => {
     return res.status(409).json({ erro: 'Esta triagem já possui uma doação registrada.' });
   }
 
-  // A triagem pode ter sido feita antes de outra doação ou de uma inaptidão:
-  // confere de novo a RN-02, a RN-03 e a inaptidão temporária (RF-11) no momento da coleta.
-  const agora = new Date();
-  const doador = triagem.doador;
-  const impedimentos = [
-    ...repo.inaptidoesDoDoador(doador.id)
-      .filter((i) => i.estaVigente(agora))
-      .map((i) => `Inaptidão temporária até ${i.dataFim.toLocaleDateString('pt-BR')}: ${i.motivo} (RF-11).`),
-    ...doador.listarImpedimentos(agora, repo.datasDoacoesDoDoador(doador.id)),
-  ];
+  if (!triagem.estaApta()) {
+    return res.status(409).json({ erro: 'Esta triagem não é apta para doação (RN-05).' });
+  }
+  const impedimentos = impedimentosParaColeta(triagem.doador);
   if (impedimentos.length > 0) {
     return res.status(409).json({ erro: `Doação não autorizada. ${impedimentos.join(' ')}` });
   }
