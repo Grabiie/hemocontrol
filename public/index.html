@@ -123,6 +123,45 @@
       <div id="resultado-historico"></div>
     </section>
 
+    <section class="painel largo" id="painel-busca-doador" data-perfis="RECEPCIONISTA">
+      <h2>Buscar e editar doador</h2>
+      <form id="form-busca-doador">
+        <label>Nome ou CPF <input name="busca" required minlength="2" autocomplete="off" placeholder="Ex.: Maria ou 529.982"></label>
+        <button type="submit">Buscar</button>
+      </form>
+      <p class="mensagem" id="msg-busca-doador"></p>
+      <div id="resultado-busca-doador"></div>
+
+      <form id="form-editar-doador" class="subformulario" hidden>
+        <h3>Editar doador</h3>
+        <label>Nome <input name="nome" required></label>
+        <label>CPF <input name="cpfExibicao" disabled></label>
+        <div class="linha">
+          <label>Nascimento <input name="dataNascimento" type="date" required></label>
+          <label>Sexo
+            <select name="sexo" required>
+              <option value="MASCULINO">Masculino</option>
+              <option value="FEMININO">Feminino</option>
+            </select>
+          </label>
+        </div>
+        <div class="linha">
+          <label>Tipo sanguíneo <select name="tipoSanguineo" id="select-tipo-edicao" required></select></label>
+          <label>Telefone <input name="telefone" type="tel" inputmode="tel" placeholder="(00) 00000-0000" autocomplete="off"></label>
+        </div>
+        <p class="dica-campo" id="dica-edicao" hidden>Sexo e tipo sanguíneo não podem mudar porque o doador já tem doações registradas.</p>
+        <label class="check">
+          <input type="checkbox" name="consentimentoResponsavel">
+          Consentimento do responsável (16 e 17 anos)
+        </label>
+        <div class="botoes-linha">
+          <button type="submit">Salvar alterações</button>
+          <button type="button" class="secundario" id="botao-cancelar-edicao">Cancelar</button>
+        </div>
+      </form>
+      <p class="mensagem" id="msg-editar-doador"></p>
+    </section>
+
     <section class="painel largo" id="painel-solicitacoes" data-perfis="GESTOR">
       <h2>Solicitações de hospitais</h2>
       <form id="form-solicitacao" class="form-linha">

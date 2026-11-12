@@ -598,6 +598,97 @@ document.getElementById('botao-csv').addEventListener('click', () => {
   URL.revokeObjectURL(link.href);
 });
 
+// ---------- Buscar e editar doador (RF-13) ----------
+
+const selectTipoEdicao = document.getElementById('select-tipo-edicao');
+for (const [valor, rotulo] of Object.entries(TIPOS)) selectTipoEdicao.add(new Option(rotulo, valor));
+
+let doadorEmEdicao = null;
+
+function fecharEdicao() {
+  doadorEmEdicao = null;
+  document.getElementById('form-editar-doador').hidden = true;
+}
+
+function abrirEdicao(d) {
+  doadorEmEdicao = d;
+  const form = document.getElementById('form-editar-doador');
+  form.nome.value = d.nome;
+  form.cpfExibicao.value = formatarCpf(d.cpf);
+  form.dataNascimento.value = d.dataNascimento;
+  form.sexo.value = d.sexo;
+  form.tipoSanguineo.value = d.tipoSanguineo;
+  form.telefone.value = formatarTelefone(d.telefone ?? '');
+  form.consentimentoResponsavel.checked = d.consentimentoResponsavel;
+  // Campos desabilitados não são enviados, então o servidor mantém os valores atuais
+  form.sexo.disabled = d.possuiDoacoes;
+  form.tipoSanguineo.disabled = d.possuiDoacoes;
+  document.getElementById('dica-edicao').hidden = !d.possuiDoacoes;
+  mostrar('msg-editar-doador', '', '');
+  form.hidden = false;
+  form.nome.focus();
+}
+
+async function buscarDoadores(termo) {
+  const destino = document.getElementById('resultado-busca-doador');
+  destino.innerHTML = '';
+  mostrar('msg-busca-doador', '', '');
+
+  const resposta = await fetch(`/api/doadores?busca=${encodeURIComponent(termo)}`);
+  const doadores = await resposta.json();
+  if (resposta.status === 401) return mostrarLogin();
+  if (!resposta.ok) return mostrar('msg-busca-doador', doadores.erro ?? 'Erro na busca.', 'erro');
+
+  if (doadores.length === 0) {
+    destino.appendChild(criar('p', 'vazio', 'Nenhum doador encontrado.'));
+    return;
+  }
+
+  const tabela = criarTabela(['Nome', 'CPF', 'Tipo', 'Telefone', ''], []);
+  const corpo = tabela.tBodies[0];
+  for (const d of doadores) {
+    const linha = corpo.insertRow();
+    for (const valor of [d.nome, formatarCpf(d.cpf), TIPOS[d.tipoSanguineo], d.telefone ? formatarTelefone(d.telefone) : '—']) {
+      linha.insertCell().textContent = valor;
+    }
+    const botao = criar('button', 'pequeno', 'Editar');
+    botao.type = 'button';
+    botao.addEventListener('click', () => abrirEdicao(d));
+    linha.insertCell().appendChild(botao);
+  }
+  const caixa = criar('div', 'rolagem');
+  caixa.appendChild(tabela);
+  destino.appendChild(caixa);
+}
+
+document.getElementById('form-busca-doador').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  fecharEdicao();
+  mostrar('msg-editar-doador', '', '');
+  await buscarDoadores(e.target.busca.value);
+});
+
+document.getElementById('form-editar-doador').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!doadorEmEdicao) return;
+  const dados = dadosDoForm(e.target);
+  dados.consentimentoResponsavel = e.target.consentimentoResponsavel.checked;
+  try {
+    const atualizado = await enviar(`/api/doadores/${doadorEmEdicao.id}`, dados, 'PUT');
+    fecharEdicao();
+    mostrar('msg-editar-doador', `Dados de ${atualizado.nome} atualizados.`, 'sucesso');
+    const termo = document.querySelector('#form-busca-doador [name=busca]').value;
+    if (termo) await buscarDoadores(termo);
+  } catch (erro) {
+    mostrar('msg-editar-doador', erro.message, 'erro');
+  }
+});
+
+document.getElementById('botao-cancelar-edicao').addEventListener('click', () => {
+  fecharEdicao();
+  mostrar('msg-editar-doador', '', '');
+});
+
 // ---------- Histórico de doações (RF-12) ----------
 
 document.getElementById('form-historico').addEventListener('submit', async (e) => {
@@ -753,6 +844,8 @@ function mostrarSistema(usuario) {
   document.getElementById('sistema').hidden = false;
 
   document.getElementById('resultado-historico').innerHTML = '';
+  document.getElementById('resultado-busca-doador').innerHTML = '';
+  fecharEdicao();
   document.getElementById('resultado-relatorio').innerHTML = '';
   document.getElementById('botoes-exportar').hidden = true;
   ultimoRelatorio = null;

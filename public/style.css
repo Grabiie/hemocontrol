@@ -212,6 +212,14 @@ textarea { font: inherit; color: var(--texto); background: var(--superficie); pa
 .resumo-estoque.tem-critico strong { color: var(--vermelho); }
 .resumo-estoque .total-estoque { color: var(--suave); }
 
+#form-busca-doador { flex-direction: row; align-items: flex-end; gap: 12px; }
+#form-busca-doador label { flex: 1; }
+#form-busca-doador button { margin: 0; padding: 9px 24px; }
+#form-editar-doador { max-width: 560px; }
+.botoes-linha { display: flex; gap: 8px; }
+.botoes-linha button { flex: 1; }
+.tabela td button.pequeno { margin: 0; padding: 3px 10px; font-size: 0.78rem; }
+
 .proxima-doacao { margin: 8px 0; padding: 8px 10px; border-radius: 6px; background: var(--fundo); font-size: 0.85rem; }
 
 .form-linha { flex-direction: row; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
