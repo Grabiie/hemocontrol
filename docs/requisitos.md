@@ -52,6 +52,10 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 **Nome:** Consultar histórico de doações
 **Descrição:** O sistema deve permitir que qualquer usuário autenticado consulte, pelo CPF, o histórico de doações de um doador, com data, volume, código da bolsa e situação de cada doação, além da data a partir da qual o doador pode doar novamente.
 
+### RF-13
+**Nome:** Buscar e editar doador
+**Descrição:** O sistema deve permitir que o recepcionista busque doadores por parte do nome ou do CPF e corrija os dados cadastrais (nome, data de nascimento, sexo, tipo sanguíneo, telefone e consentimento do responsável). O CPF não pode ser alterado.
+
 ## Requisitos Não Funcionais (RNF)
 
 ### RNF-01
@@ -107,3 +111,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 ### RN-07
 **Nome:** Volume da doação
 **Descrição:** O volume coletado deve estar entre 300 mL e 495 mL (450 mL ± 45 mL; bolsas abaixo de 300 mL são desprezadas) e não pode ultrapassar 8 mL por quilo de peso para mulheres ou 9 mL por quilo de peso para homens, considerando o peso medido na triagem.
+
+### RN-08
+**Nome:** Correção de sexo e tipo sanguíneo
+**Descrição:** O sexo e o tipo sanguíneo de um doador só podem ser corrigidos enquanto ele não tiver doações registradas, porque definem o intervalo entre doações (RN-03) e o tipo das bolsas já geradas.
