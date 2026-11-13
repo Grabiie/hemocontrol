@@ -332,6 +332,29 @@ app.post('/api/doacoes', exigir(Enfermeiro), (req, res) => {
   res.status(201).json({ id, cancelada: doacao.cancelada, bolsa });
 });
 
+// RF-17 — Rastrear doação ou bolsa (Gestor): pelo nº da doação ou pelo código da bolsa
+const mascararCpf = (cpf) => `***.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-**`;
+
+app.get('/api/rastreio', exigir(Gestor), (req, res) => {
+  const criterio = req.usuario.rastrear(req.query.termo);
+  const achado = repo.rastrearDoacaoOuBolsa(criterio);
+  if (!achado) {
+    return res.status(404).json({
+      erro: criterio.doacaoId && !criterio.codigo
+        ? `Não existe doação nº ${criterio.doacaoId}.`
+        : `Nenhuma doação ou bolsa encontrada para "${String(req.query.termo).trim()}".`,
+    });
+  }
+  const { doacao, doador, bolsa, entrega } = achado;
+  res.json({
+    doacao,
+    // RNF-03: o CPF aparece mascarado, o nome basta para identificar o doador
+    doador: doador ? { ...doador, cpf: mascararCpf(doador.cpf) } : null,
+    bolsa: bolsa ? { ...bolsa.toJSON(), situacao: bolsa.situacao() } : null,
+    entrega,
+  });
+});
+
 // RF-05 e RF-06 — Consultar estoque com alerta de estoque crítico (Gestor)
 app.get('/api/estoque', exigir(Gestor), (req, res) => {
   const estoque = repo.carregarEstoque();

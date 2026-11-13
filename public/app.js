@@ -975,6 +975,84 @@ document.getElementById('form-historico').addEventListener('submit', async (e) =
   }
 });
 
+// ---------- Rastrear doação ou bolsa (RF-17, Gestor) ----------
+
+const ROTULO_SITUACAO_BOLSA = {
+  DISPONIVEL: ['Disponível no estoque', 'atendida'],
+  VENCIDA: ['Vencida, aguardando descarte', 'pendente'],
+  ENTREGUE: ['Entregue', 'neutro'],
+  DESCARTADA: ['Descartada', 'neutro'],
+};
+
+// Bloco com título e pares "rótulo: valor"
+function blocoRastreio(titulo, pares) {
+  const bloco = criar('div', 'bloco-rastreio');
+  bloco.appendChild(criar('h3', null, titulo));
+  const lista = criar('dl');
+  for (const [rotulo, valor] of pares) {
+    lista.appendChild(criar('dt', null, rotulo));
+    const dd = criar('dd');
+    if (valor instanceof Node) dd.appendChild(valor); else dd.textContent = valor;
+    lista.appendChild(dd);
+  }
+  bloco.appendChild(lista);
+  return bloco;
+}
+
+const dataHoraCurta = (iso) => new Date(iso).toLocaleString('pt-BR', {
+  day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+});
+
+document.getElementById('form-rastreio').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const resultado = document.getElementById('resultado-rastreio');
+  resultado.innerHTML = '';
+  mostrar('msg-rastreio', '', '');
+  try {
+    const resposta = await fetch(`/api/rastreio?${new URLSearchParams({ termo: e.target.termo.value })}`);
+    if (resposta.status === 401) return mostrarLogin();
+    const dados = await resposta.json();
+    if (!resposta.ok) throw new Error(dados.erro ?? 'Erro ao consultar.');
+    const { doacao, doador, bolsa, entrega } = dados;
+
+    if (doacao) {
+      resultado.appendChild(blocoRastreio(`Doação nº ${doacao.id}`, [
+        ['Data', dataHoraCurta(doacao.dataHora)],
+        ['Volume', `${doacao.volumeMl} mL`],
+        ['Situação', doacao.cancelada ? 'Coleta interrompida' : 'Coleta concluída'],
+        ['Triagem', `nº ${doacao.triagem.id}, em ${dataHoraCurta(doacao.triagem.dataHora)}`],
+        ...(doador ? [['Doador', `${doador.nome} · ${doador.cpf}`], ['Tipo do doador', TIPOS[doador.tipoSanguineo]]] : []),
+      ]));
+    }
+
+    if (bolsa) {
+      const [rotulo, classe] = ROTULO_SITUACAO_BOLSA[bolsa.situacao];
+      const pares = [
+        ['Tipo', TIPOS[bolsa.tipoSanguineo]],
+        ['Volume', `${bolsa.volumeMl} mL`],
+        ['Coleta', formatarData(bolsa.dataColeta)],
+        ['Validade', formatarData(bolsa.dataValidade)],
+        ['Situação', criar('span', `selo ${classe}`, rotulo)],
+      ];
+      if (bolsa.situacao === 'DISPONIVEL') {
+        const dias = Math.ceil((new Date(bolsa.dataValidade) - new Date()) / 86400000);
+        pares.push(['Vence em', dias <= 1 ? 'menos de 1 dia' : `${dias} dias`]);
+      }
+      if (entrega) {
+        pares.push(['Destino', `${entrega.hospital} (solicitação nº ${entrega.solicitacaoId})`]);
+        pares.push(['Entregue em', formatarData(entrega.dataAtendimento)]);
+      }
+      if (bolsa.dataDescarte) pares.push(['Descartada em', formatarData(bolsa.dataDescarte)]);
+      if (!doacao) pares.push(['Origem', 'Estoque inicial, sem doação registrada']);
+      resultado.appendChild(blocoRastreio(`Bolsa ${bolsa.codigo}`, pares));
+    } else if (doacao) {
+      resultado.appendChild(criar('p', 'vazio', 'Esta doação não gerou bolsa: a coleta foi interrompida.'));
+    }
+  } catch (erro) {
+    mostrar('msg-rastreio', erro.message, 'erro');
+  }
+});
+
 // ---------- Tema claro/escuro (RNF-06) ----------
 // Prioridade: preferência salva do usuário logado > escolha salva neste navegador > tema do sistema.
 
@@ -1121,6 +1199,7 @@ function mostrarSistema(usuario) {
   document.getElementById('sistema').hidden = false;
 
   document.getElementById('resultado-historico').innerHTML = '';
+  document.getElementById('resultado-rastreio').innerHTML = '';
   document.getElementById('resultado-busca-doador').innerHTML = '';
   fecharEdicao();
   document.getElementById('resultado-relatorio').innerHTML = '';

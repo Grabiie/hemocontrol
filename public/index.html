@@ -180,6 +180,18 @@
       <div id="resultado-historico"></div>
     </section>
 
+    <!-- RF-17: rastreio pelo nº da doação ou pelo código da bolsa, ao lado do histórico -->
+    <section class="painel" id="painel-rastreio" data-perfis="GESTOR">
+      <h2>Rastrear doação ou bolsa</h2>
+      <form id="form-rastreio">
+        <label>Nº da doação ou código da bolsa
+          <input name="termo" required autocomplete="off" placeholder="Ex.: 12 ou HC-1A2B3C4D"></label>
+        <button type="submit">Consultar</button>
+      </form>
+      <p class="mensagem" id="msg-rastreio"></p>
+      <div id="resultado-rastreio"></div>
+    </section>
+
     <section class="painel largo" id="painel-busca-doador" data-perfis="RECEPCIONISTA">
       <h2>Buscar e editar doador</h2>
       <form id="form-busca-doador">

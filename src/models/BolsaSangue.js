@@ -46,6 +46,13 @@ export class BolsaSangue {
     this.#dataDescarte = new Date(data);
   }
 
+  // RF-17: situação para o rastreio. Uma bolsa disponível que já passou da validade
+  // aparece como VENCIDA até ser descartada (RF-09).
+  situacao(dataReferencia = new Date()) {
+    if (this.#status === StatusBolsa.DISPONIVEL && this.estaVencida(dataReferencia)) return 'VENCIDA';
+    return this.#status;
+  }
+
   marcarEntregue(data = new Date()) {
     if (this.estaVencida(data)) throw new Error('Bolsa vencida não pode ser entregue (RN-04).');
     this.#status = StatusBolsa.ENTREGUE;

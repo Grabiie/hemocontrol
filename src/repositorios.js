@@ -404,6 +404,51 @@ export const salvarDescartes = transacao((bolsas) => {
   }
 });
 
+// ---------- Rastreio de doação ou bolsa (RF-17) ----------
+
+// Junta doação, triagem, doador, bolsa e o hospital que recebeu a bolsa (se foi entregue).
+// Procura pelo nº da doação ou pelo código da bolsa; devolve null quando não encontra.
+// Parte da bolsa (LEFT JOIN com a doação) para achar também as bolsas do estoque inicial,
+// que não têm doação; para a doação cancelada, que não tem bolsa, parte da doação.
+const SELECAO_RASTREIO = `
+  SELECT d.id AS doacao_id, d.data_hora, d.volume_ml AS doacao_volume, d.cancelada,
+         t.id AS triagem_id, t.data_hora AS triagem_data,
+         o.nome AS doador_nome, o.cpf AS doador_cpf, o.tipo_sanguineo AS doador_tipo,
+         b.codigo, b.tipo_sanguineo, b.volume_ml, b.data_coleta, b.status, b.data_descarte,
+         s.id AS solicitacao_id, s.data_atendimento, h.nome AS hospital_nome`;
+const JUNCOES_RASTREIO = `
+  LEFT JOIN triagem t ON t.id = d.triagem_id
+  LEFT JOIN doador o ON o.id = t.doador_id
+  LEFT JOIN solicitacao s ON s.id = b.solicitacao_id
+  LEFT JOIN hospital h ON h.id = s.hospital_id`;
+
+export function rastrearDoacaoOuBolsa({ doacaoId = null, codigo = null }) {
+  let linha;
+  if (doacaoId) {
+    linha = db.prepare(`${SELECAO_RASTREIO} FROM doacao d LEFT JOIN bolsa_sangue b ON b.doacao_id = d.id
+      ${JUNCOES_RASTREIO} WHERE d.id = ?`).get(doacaoId);
+  }
+  if (!linha && codigo) {
+    linha = db.prepare(`${SELECAO_RASTREIO} FROM bolsa_sangue b LEFT JOIN doacao d ON d.id = b.doacao_id
+      ${JUNCOES_RASTREIO} WHERE b.codigo = ?`).get(codigo);
+  }
+  if (!linha) return null;
+  return {
+    doacao: linha.doacao_id ? {
+      id: linha.doacao_id,
+      dataHora: linha.data_hora,
+      volumeMl: linha.doacao_volume,
+      cancelada: linha.cancelada === 1,
+      triagem: { id: linha.triagem_id, dataHora: linha.triagem_data },
+    } : null,
+    doador: linha.doador_nome ? { nome: linha.doador_nome, cpf: linha.doador_cpf, tipoSanguineo: linha.doador_tipo } : null,
+    bolsa: linha.codigo ? linhaParaBolsa(linha) : null,
+    entrega: linha.solicitacao_id ? {
+      solicitacaoId: linha.solicitacao_id, hospital: linha.hospital_nome, dataAtendimento: linha.data_atendimento,
+    } : null,
+  };
+}
+
 // ---------- Relatório e histórico ----------
 
 // Bolsas com a doação que as originou, para o detalhamento do relatório (RF-10).

@@ -12,6 +12,21 @@ export class Gestor extends Usuario {
     }
   }
 
+  // RF-17: interpreta o que foi digitado no rastreio. Só números é o nº da doação;
+  // "HC-" seguido de 8 letras/números (ou só os 8, sem o prefixo) é o código da bolsa.
+  // A busca em si é feita pelo repositório.
+  rastrear(termo) {
+    const texto = String(termo ?? '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!texto) throw new Error('Informe o número da doação ou o código da bolsa.');
+    if (/^\d{1,7}$/.test(texto)) return { doacaoId: Number(texto), codigo: null };
+    const codigo = texto.startsWith('HC-') ? texto : `HC-${texto}`;
+    if (/^HC-[0-9A-F]{8}$/.test(codigo)) {
+      // 8 dígitos sem prefixo podem ser os dois: tenta a doação e, se não houver, a bolsa
+      return { doacaoId: /^\d{8}$/.test(texto) ? Number(texto) : null, codigo };
+    }
+    throw new Error('Digite o número da doação (ex.: 12) ou o código da bolsa (ex.: HC-1A2B3C4D).');
+  }
+
   // RF-08
   atenderSolicitacao(solicitacao, estoque, aceitaParcial) {
     return solicitacao.atender(estoque, aceitaParcial);
