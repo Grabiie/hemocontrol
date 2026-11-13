@@ -329,6 +329,9 @@ textarea { font: inherit; color: var(--texto); background: var(--superficie); pa
   background: var(--texto); color: var(--superficie); font-size: 0.78rem; line-height: 1.35;
   padding: 6px 9px; border-radius: 6px; white-space: nowrap;
 }
+@media (max-width: 640px) {
+  .dica-grafico { white-space: normal; width: max-content; max-width: 220px; text-align: center; }
+}
 .resumo-estoque { margin: 0 0 4px; padding: 8px 12px; border-radius: 6px; background: var(--verde-claro); font-size: 0.9rem; }
 .resumo-estoque.tem-critico { background: var(--vermelho-claro); }
 .resumo-estoque strong { color: var(--verde); }
@@ -412,8 +415,10 @@ button.secundario { background: var(--superficie); color: var(--vermelho); borde
 .vazio { font-size: 0.9rem; color: var(--suave); }
 
 @media (max-width: 900px) {
-  main { grid-template-columns: 1fr; }
+  /* minmax(0, 1fr): sem isso, uma tabela larga estica a coluna e a página inteira rola de lado */
+  main { grid-template-columns: minmax(0, 1fr); }
 }
+.painel { min-width: 0; }
 
 /* ---------- Usuários do sistema e troca de senha (RF-14, RF-15) ---------- */
 .senha-temporaria {
@@ -464,3 +469,36 @@ button.secundario { background: var(--superficie); color: var(--vermelho); borde
 .paginacao button { margin: 0; padding: 5px 14px; }
 .paginacao button:disabled { opacity: 0.4; cursor: default; filter: none; }
 .tabela-logs td:nth-child(4) { white-space: normal; min-width: 240px; }
+
+/* ---------- Celular: tabelas largas viram cartões, filtros ocupam a linha toda ---------- */
+@media (max-width: 640px) {
+  main { padding: 0 12px; margin: 16px auto; }
+  .painel { padding: 16px; }
+  .rolagem:has(.tabela-cartoes), #painel-logs .rolagem { max-height: none; overflow: visible; border: none; }
+  .tabela-cartoes thead { display: none; }
+  .tabela-cartoes, .tabela-cartoes tbody, .tabela-cartoes tr, .tabela-cartoes td { display: block; width: auto; }
+  .tabela-cartoes tr {
+    margin-bottom: 10px; padding: 8px 12px;
+    border: 1px solid var(--borda); border-radius: 8px; background: var(--superficie);
+  }
+  .tabela-cartoes td {
+    display: flex; gap: 12px; justify-content: space-between; align-items: baseline;
+    padding: 4px 0; border: none; white-space: normal; text-align: right; min-width: 0;
+  }
+  .tabela-cartoes td::before {
+    content: attr(data-rotulo); flex-shrink: 0;
+    color: var(--suave); font-size: 0.8rem; font-weight: 600; text-align: left;
+  }
+  .tabela-cartoes td:not([data-rotulo]) { justify-content: flex-end; }
+  .tabela-cartoes td:not([data-rotulo]):empty { display: none; }
+  .tabela-cartoes tr.inativo td, .tabela-logs.tabela-cartoes tr.alerta-log td { background: none; }
+  .tabela-logs.tabela-cartoes tr.alerta-log { background: var(--vermelho-claro); border-color: var(--vermelho); }
+  .tabela-logs.tabela-cartoes td:first-child, .tabela-logs.tabela-cartoes td:nth-child(4) { white-space: normal; min-width: 0; }
+  .acoes-usuario { width: auto; }
+  .form-linha label { min-width: 0; flex: 1 1 100%; }
+  .form-linha label.estreito { min-width: 0; flex: 1 1 40%; }
+  .form-linha button { flex: 1 1 auto; }
+  .botoes-exportar { margin-left: 0; width: 100%; }
+  .botoes-exportar button { width: 100%; }
+  .paginacao { justify-content: space-between; }
+}

@@ -371,6 +371,16 @@ function criarTabela(colunas, linhas, rolagem = false) {
   return caixa;
 }
 
+// No celular, cada linha vira um cartão: cada célula leva o nome da coluna (CSS .tabela-cartoes)
+function comoCartoes(tabela) {
+  const nomes = [...tabela.tHead.rows[0].cells].map((c) => c.textContent);
+  for (const linha of tabela.tBodies[0].rows) {
+    [...linha.cells].forEach((celula, i) => { if (nomes[i]) celula.dataset.rotulo = nomes[i]; });
+  }
+  tabela.classList.add('tabela-cartoes');
+  return tabela;
+}
+
 function criarCartoes(itens) {
   const grade = criar('div', 'cartoes');
   for (const [numero, descricao] of itens) {
@@ -401,11 +411,18 @@ function svg(tag, atributos = {}, texto) {
 }
 
 // Colunas com a quantidade de cada tipo e uma linha tracejada no limite crítico
+// A largura do desenho acompanha a do painel, para o texto não encolher no celular
+let ultimoGrafico = null;
+
 function desenharGraficoEstoque(tipos, limiteCritico) {
   const destino = document.getElementById('grafico-estoque');
+  ultimoGrafico = [tipos, limiteCritico];
   destino.innerHTML = '';
 
-  const L = 800, A = 230, esquerda = 16, direita = 150, topo = 26, base = 172;
+  const estreito = destino.clientWidth > 0 && destino.clientWidth < 560;
+  const L = estreito ? Math.max(300, destino.clientWidth) : 800;
+  // Em tela estreita o rótulo do limite vai para cima da linha, sem reservar a margem direita
+  const A = 230, esquerda = estreito ? 4 : 16, direita = estreito ? 4 : 150, topo = estreito ? 34 : 26, base = 172;
   const faixa = (L - esquerda - direita) / tipos.length;
   const maximo = Math.max(limiteCritico, ...tipos.map((t) => t.quantidade)) * 1.12;
   const y = (valor) => base - (valor / maximo) * (base - topo);
@@ -419,7 +436,9 @@ function desenharGraficoEstoque(tipos, limiteCritico) {
     x1: esquerda, x2: L - direita + 8, y1: yLimite, y2: yLimite,
     style: 'stroke: var(--suave)', 'stroke-width': 1, 'stroke-dasharray': '5 4',
   }));
-  desenho.appendChild(svg('text', { x: L - direita + 14, y: yLimite + 4, 'font-size': 12, class: 'limite' }, `limite crítico: ${limiteCritico}`));
+  desenho.appendChild(estreito
+    ? svg('text', { x: L - direita, y: yLimite - 6, 'text-anchor': 'end', 'font-size': 11, class: 'limite' }, `limite crítico: ${limiteCritico}`)
+    : svg('text', { x: L - direita + 14, y: yLimite + 4, 'font-size': 12, class: 'limite' }, `limite crítico: ${limiteCritico}`));
 
   const dica = criar('div', 'dica-grafico');
   dica.hidden = true;
@@ -456,7 +475,13 @@ function desenharGraficoEstoque(tipos, limiteCritico) {
       dica.textContent = descricao + (t.critico ? ` (${plural(faltam, 'bolsa', 'bolsas')} abaixo do limite)` : '');
       dica.style.left = `${(centro / L) * 100}%`;
       dica.style.top = `${((topoColuna - 24) / A) * 100}%`;
+      dica.style.marginLeft = '0px';
       dica.hidden = false;
+      // Em tela estreita, não deixa a dica sair pela lateral do gráfico
+      const caixa = dica.parentElement.getBoundingClientRect();
+      const r = dica.getBoundingClientRect();
+      if (r.left < caixa.left) dica.style.marginLeft = `${caixa.left - r.left}px`;
+      else if (r.right > caixa.right) dica.style.marginLeft = `${caixa.right - r.right}px`;
     };
     const esconderDica = () => { dica.hidden = true; };
     grupo.addEventListener('mouseenter', mostrarDica);
@@ -474,6 +499,15 @@ function desenharGraficoEstoque(tipos, limiteCritico) {
   }
   destino.append(desenho, dica, legenda);
 }
+
+let esperaRedesenho;
+window.addEventListener('resize', () => {
+  clearTimeout(esperaRedesenho);
+  esperaRedesenho = setTimeout(() => {
+    const painel = document.getElementById('grafico-estoque');
+    if (ultimoGrafico && painel.offsetParent !== null) desenharGraficoEstoque(...ultimoGrafico);
+  }, 150);
+});
 
 // RF-05 — bolsas disponíveis que vencem nos próximos dias
 function mostrarProximasDoVencimento(bolsas, dias) {
@@ -615,7 +649,7 @@ async function atualizarSolicitacoes() {
       celulaAcao.appendChild(botao);
     }
   }
-  destino.appendChild(tabela);
+  destino.appendChild(comoCartoes(tabela));
 }
 
 // RF-08 — se faltar bolsa, o sistema oferece o atendimento parcial (fluxo alternativo 3a)
@@ -1243,7 +1277,7 @@ async function listarUsuarios() {
     }, u.ativo ? 'pequeno secundario' : 'pequeno'));
   }
   const caixa = criar('div', 'rolagem');
-  caixa.appendChild(tabela);
+  caixa.appendChild(comoCartoes(tabela));
   destino.appendChild(caixa);
 }
 
@@ -1336,7 +1370,7 @@ async function carregarLogs() {
   }
   tabela.classList.add('tabela-logs');
   const caixa = criar('div', 'rolagem');
-  caixa.appendChild(tabela);
+  caixa.appendChild(comoCartoes(tabela));
   destino.appendChild(caixa);
 
   const ultimaPagina = Math.ceil(dados.total / dados.porPagina);
