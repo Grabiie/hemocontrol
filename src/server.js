@@ -215,8 +215,8 @@ app.get('/api/doadores/:cpf', exigir(Recepcionista, ProfissionalDeSaude), (req, 
   res.json(doador);
 });
 
-// RF-12 — Consultar histórico de doações (todos os perfis; o Administrador usa para conferir registros do log)
-app.get('/api/doadores/:cpf/historico', exigir(Usuario), (req, res) => {
+// RF-12 — Consultar histórico de doações (perfis do banco de sangue; o Administrador não precisa dos dados dos doadores)
+app.get('/api/doadores/:cpf/historico', exigir(Recepcionista, ProfissionalDeSaude, Gestor), (req, res) => {
   const doador = repo.buscarDoadorPorCpf(req.params.cpf);
   if (!doador) return res.status(404).json({ erro: 'Doador não encontrado.' });
   const inaptidao = repo.inaptidoesDoDoador(doador.id).find((i) => i.estaVigente()) ?? null;

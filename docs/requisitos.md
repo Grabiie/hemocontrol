@@ -50,7 +50,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-12
 **Nome:** Consultar histórico de doações
-**Descrição:** O sistema deve permitir que qualquer usuário autenticado consulte, pelo CPF, o histórico de doações de um doador, com data, volume, código da bolsa e situação de cada doação, além da data a partir da qual o doador pode doar novamente.
+**Descrição:** O sistema deve permitir que recepcionistas, médicos, enfermeiros e gestores consultem, pelo CPF, o histórico de doações de um doador, com data, volume, código da bolsa e situação de cada doação, além da data a partir da qual o doador pode doar novamente.
 
 ### RF-13
 **Nome:** Buscar e editar doador
@@ -146,4 +146,4 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RN-12
 **Nome:** Quem gerencia cada conta
-**Descrição:** O gestor gerencia apenas contas de recepcionista, médico e enfermeiro. Contas de gestor são gerenciadas pelo administrador, para que um gestor não consiga desativar ou assumir a conta de outro. O administrador gerencia todos os perfis, menos outros administradores; contas de administrador são criadas e recuperadas apenas pelo terminal do servidor (`npm run admin`), pelo responsável técnico, e essas ações também ficam no log (RF-16). O administrador não usa as funções do banco de sangue (cadastro, triagem, doação, estoque, solicitações e relatório); ele só consulta o histórico de doações, para conferir registros que aparecem no log.
+**Descrição:** O gestor gerencia apenas contas de recepcionista, médico e enfermeiro. Contas de gestor são gerenciadas pelo administrador, para que um gestor não consiga desativar ou assumir a conta de outro. O administrador gerencia todos os perfis, menos outros administradores; contas de administrador são criadas e recuperadas apenas pelo terminal do servidor (`npm run admin`), pelo responsável técnico, e essas ações também ficam no log (RF-16). O administrador não usa as funções do banco de sangue nem consulta dados de doadores (cadastro, histórico, triagem, doação, estoque, solicitações e relatório).

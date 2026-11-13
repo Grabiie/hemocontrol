@@ -17,7 +17,7 @@ O objetivo é substituir controles manuais (papel e planilhas), reduzindo perdas
 - **Recepcionista:** cadastra doadores.
 - **Profissional de saúde (médico e enfermeiro):** realiza triagem e registra doações.
 - **Gestor:** consulta estoque, atende solicitações, gera relatórios e gerencia as contas de recepcionista, médico e enfermeiro.
-- **Administrador (responsável técnico):** gerencia todas as contas, inclusive as de gestor, e consulta o log de atividades. Não usa as funções do banco de sangue; só consulta o histórico de doações.
+- **Administrador (responsável técnico):** gerencia todas as contas, inclusive as de gestor, e consulta o log de atividades. Não usa as funções do banco de sangue nem vê dados de doadores.
 - **Hospital solicitante (sistema externo):** solicita bolsas.
 
 ### Funcionalidades planejadas
@@ -61,7 +61,7 @@ npm run seed
 
 ### Contas de demonstração
 
-Todas usam a senha `hemo123`. Cada perfil só acessa as funções que o diagrama de casos de uso atribui a ele, e todos podem consultar o histórico de doações.
+Todas usam a senha `hemo123`. Cada perfil só acessa as funções que o diagrama de casos de uso atribui a ele. Os perfis do banco de sangue também consultam o histórico de doações; o administrador não.
 
 | Usuário | Perfil | Pode fazer |
 |---|---|---|
