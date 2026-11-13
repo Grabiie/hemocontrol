@@ -58,7 +58,11 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-14
 **Nome:** Gerenciar usuários
-**Descrição:** O sistema deve permitir que o gestor cadastre usuários (nome, CPF, login, perfil e senha inicial, além do CRM para médicos e do COREN para enfermeiros) e redefina a senha de qualquer usuário. O login é único, e a senha tem no mínimo 6 caracteres e é guardada apenas como hash (RNF-02). Ao redefinir uma senha, as sessões abertas daquele usuário são encerradas.
+**Descrição:** O sistema deve permitir que o gestor cadastre usuários (nome, CPF, login e perfil, além do CRM para médicos e do COREN para enfermeiros), gere uma senha temporária para qualquer outro usuário e desative ou reative contas. Login e CPF não se repetem, e o CPF é conferido antes do restante do cadastro. O gestor nunca escolhe nem conhece a senha definitiva: no cadastro e na redefinição o sistema gera uma senha temporária, que é exibida uma única vez, e o usuário é obrigado a trocá-la no próximo acesso (RF-15). Fica registrado quem gerou a senha temporária e quando. Contas não são excluídas, apenas desativadas, para que os registros feitos por elas (triagens, inaptidões, doações) continuem ligados a quem os fez; uma conta desativada não entra no sistema e perde as sessões abertas. O gestor não pode desativar a própria conta nem gerar senha temporária para si.
+
+### RF-15
+**Nome:** Alterar a própria senha
+**Descrição:** O sistema deve permitir que qualquer usuário autenticado troque a própria senha, informando a senha atual e a nova (mínimo de 6 caracteres, diferente da atual). Enquanto estiver com uma senha temporária, o usuário só consegue acessar a troca de senha. Ao trocar, as outras sessões abertas desse usuário são encerradas.
 
 ## Requisitos Não Funcionais (RNF)
 
