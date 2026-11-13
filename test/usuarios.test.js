@@ -8,6 +8,8 @@ import { Medico } from '../src/models/Medico.js';
 import { Enfermeiro } from '../src/models/Enfermeiro.js';
 import { Gestor } from '../src/models/Gestor.js';
 import { gerarHashSenha, conferirSenha } from '../src/models/senha.js';
+import { Doador } from '../src/models/Doador.js';
+import { formatarDataISO } from '../src/models/datas.js';
 
 const dados = (login) => ({ nome: 'Teste', cpf: '111.444.777-35', login, senhaHash: gerarHashSenha('segredo') });
 
@@ -94,4 +96,37 @@ test('RN-08: sexo e tipo sanguíneo só mudam enquanto o doador não tiver doaç
   assert.throws(() => recepcionista.editarDoador(atual, { sexo: 'MASCULINO' }, true), /RN-08/);
   // Reenviar os mesmos valores não é alteração
   assert.equal(recepcionista.editarDoador(atual, { sexo: 'FEMININO', tipoSanguineo: 'O_NEGATIVO' }, true).sexo, 'FEMININO');
+});
+
+test('RN-11: cadastro aceita só doadores de 16 a 69 anos e recusa data no futuro', () => {
+  const recepcionista = new Recepcionista({ ...dados('rec') });
+  const anosAtras = (anos, dias = 0) => {
+    const d = new Date();
+    return formatarDataISO(new Date(d.getFullYear() - anos, d.getMonth(), d.getDate() + dias));
+  };
+  const novo = (dataNascimento) => new Doador({
+    nome: 'Teste', cpf: '529.982.247-25', dataNascimento, sexo: 'FEMININO', tipoSanguineo: 'O_POSITIVO',
+  });
+  assert.throws(() => recepcionista.cadastrarDoador(novo(anosAtras(15))), /RN-11/);
+  assert.doesNotThrow(() => recepcionista.cadastrarDoador(novo(anosAtras(16, -1))));
+  assert.doesNotThrow(() => recepcionista.cadastrarDoador(novo(anosAtras(69))));
+  assert.throws(() => recepcionista.cadastrarDoador(novo(anosAtras(71))), /RN-11/);
+  assert.throws(() => recepcionista.cadastrarDoador(novo(anosAtras(130))), /RN-11/);
+  assert.throws(() => novo(anosAtras(-1)), /futuro/);
+});
+
+test('RN-11: na edição a idade só é conferida se a data de nascimento mudar', () => {
+  const recepcionista = new Recepcionista({ ...dados('rec2') });
+  const antigo = new Doador({
+    id: 1, nome: 'Veterano', cpf: '529.982.247-25', dataNascimento: '1950-01-10', sexo: 'MASCULINO', tipoSanguineo: 'A_POSITIVO',
+  });
+  assert.equal(recepcionista.editarDoador(antigo, { telefone: '11987654321' }, true).telefone, '11987654321');
+  assert.throws(() => recepcionista.editarDoador(antigo, { dataNascimento: '1940-01-10' }, true), /RN-11/);
+});
+
+test('RN-02: acima de 69 anos o doador não pode doar', () => {
+  const veterano = new Doador({
+    id: 2, nome: 'Veterano', cpf: '529.982.247-25', dataNascimento: '1950-01-10', sexo: 'MASCULINO', tipoSanguineo: 'A_POSITIVO',
+  });
+  assert.match(veterano.listarImpedimentos(new Date('2026-11-12T10:00:00'), [new Date('2026-01-01')]).join(' '), /69 anos/);
 });
