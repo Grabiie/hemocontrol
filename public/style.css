@@ -299,3 +299,44 @@ button.secundario { background: var(--superficie); color: var(--vermelho); borde
 @media (max-width: 900px) {
   main { grid-template-columns: 1fr; }
 }
+
+/* ---------- Usuários do sistema e troca de senha (RF-14, RF-15) ---------- */
+.usuario-logado button.sair + button.sair { margin-left: 6px; }
+.senha-temporaria {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--verde);
+  border-radius: 8px;
+  background: var(--verde-claro);
+  color: var(--texto);
+  font-size: 0.9rem;
+}
+.senha-temporaria code {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--superficie);
+}
+.tabela tr.inativo td { opacity: 0.55; }
+.acoes-usuario { white-space: nowrap; width: 1%; }
+/* Na tabela de usuários o nome e o perfil podem quebrar linha, para os botões caberem */
+#lista-usuarios .tabela td:nth-child(1), #lista-usuarios .tabela td:nth-child(3) { white-space: normal; }
+.acoes-usuario button + button { margin-left: 6px; }
+.tabela td button.confirmando { background: var(--vermelho); color: #fff; border-color: var(--vermelho); }
+.aviso-troca { margin: 0 0 12px; font-size: 0.9rem; color: var(--vermelho); }
+.alerta-topo {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translate(-50%, -150%);
+  padding: 10px 18px;
+  border-radius: 8px;
+  background: var(--verde);
+  color: #fff;
+  font-size: 0.9rem;
+  transition: transform 0.25s ease;
+  z-index: 10;
+}
+.alerta-topo.visivel { transform: translate(-50%, 0); }

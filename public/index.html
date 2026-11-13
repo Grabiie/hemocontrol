@@ -27,6 +27,7 @@
       <div class="usuario-logado" id="usuario-logado" hidden>
         <span id="nome-usuario"></span>
         <span class="perfil" id="perfil-usuario"></span>
+        <button type="button" class="sair" id="botao-minha-senha">Alterar senha</button>
         <button type="button" class="sair" id="botao-sair">Sair</button>
       </div>
     </div>
@@ -44,6 +45,25 @@
   </section>
 
   <main id="sistema" hidden>
+    <section class="painel largo" id="painel-minha-senha" hidden>
+      <h2>Alterar minha senha</h2>
+      <p class="aviso-troca" id="aviso-troca-senha" hidden>Você entrou com uma senha temporária. Crie a sua senha para continuar usando o sistema.</p>
+      <form id="form-minha-senha">
+        <div class="linha">
+          <label>Senha atual <input name="senhaAtual" type="password" required autocomplete="current-password"></label>
+          <span></span>
+        </div>
+        <div class="linha">
+          <label>Nova senha <input name="novaSenha" type="password" required minlength="6" autocomplete="new-password"></label>
+          <label>Confirmar nova senha <input name="confirmacao" type="password" required minlength="6" autocomplete="new-password"></label>
+        </div>
+        <div class="botoes-linha">
+          <button type="submit">Salvar nova senha</button>
+          <button type="button" class="secundario" id="botao-cancelar-minha-senha">Cancelar</button>
+        </div>
+      </form>
+      <p class="mensagem" id="msg-minha-senha"></p>
+    </section>
     <section class="painel" id="painel-doador" data-perfis="RECEPCIONISTA">
       <h2><span class="passo">1</span> Cadastrar doador</h2>
       <form id="form-doador">
@@ -224,43 +244,31 @@
     <section class="painel largo" id="painel-usuarios" data-perfis="GESTOR">
       <h2>Usuários do sistema</h2>
       <form id="form-usuario">
-        <div class="linha">
-          <label>Nome <input name="nome" required autocomplete="off"></label>
-          <label>CPF <input name="cpf" required placeholder="000.000.000-00" inputmode="numeric" maxlength="14" autocomplete="off"></label>
-        </div>
-        <div class="linha">
-          <label>Login <input name="login" required minlength="3" maxlength="30" autocomplete="off" placeholder="ex.: joana.silva"></label>
-          <label>Perfil
-            <select name="perfil" required>
-              <option value="RECEPCIONISTA">Recepcionista</option>
-              <option value="MEDICO">Médico</option>
-              <option value="ENFERMEIRO">Enfermeiro</option>
-              <option value="GESTOR">Gestor</option>
-            </select>
-          </label>
-        </div>
-        <label id="campo-registro" hidden><span id="rotulo-registro">CRM</span> <input name="registroProfissional" autocomplete="off"></label>
-        <div class="linha">
-          <label>Senha inicial <input name="senha" type="password" required minlength="6" autocomplete="new-password"></label>
-          <label>Confirmar senha <input name="confirmacao" type="password" required minlength="6" autocomplete="new-password"></label>
-        </div>
-        <button type="submit">Cadastrar usuário</button>
+        <label>CPF <input name="cpf" required placeholder="000.000.000-00" inputmode="numeric" maxlength="14" autocomplete="off"></label>
+        <p class="dica-campo" id="status-cpf-usuario">Informe o CPF para liberar o restante do cadastro.</p>
+        <fieldset class="bloqueavel" id="campos-usuario" disabled>
+          <div class="linha">
+            <label>Nome <input name="nome" required autocomplete="off"></label>
+            <label>Login <input name="login" required minlength="3" maxlength="30" autocomplete="off" placeholder="ex.: joana.silva"></label>
+          </div>
+          <div class="linha">
+            <label>Perfil
+              <select name="perfil" required>
+                <option value="RECEPCIONISTA">Recepcionista</option>
+                <option value="MEDICO">Médico</option>
+                <option value="ENFERMEIRO">Enfermeiro</option>
+                <option value="GESTOR">Gestor</option>
+              </select>
+            </label>
+            <label id="campo-registro" hidden><span id="rotulo-registro">CRM</span> <input name="registroProfissional" autocomplete="off"></label>
+          </div>
+          <p class="dica-campo">O sistema gera uma senha temporária. No primeiro acesso, o próprio usuário cria a senha definitiva.</p>
+          <button type="submit">Cadastrar usuário</button>
+        </fieldset>
       </form>
       <p class="mensagem" id="msg-usuario"></p>
+      <div class="senha-temporaria" id="aviso-senha-temporaria" hidden></div>
       <div id="lista-usuarios"></div>
-
-      <form id="form-senha" class="subformulario" hidden>
-        <h3 id="titulo-senha">Redefinir senha</h3>
-        <div class="linha">
-          <label>Nova senha <input name="senha" type="password" required minlength="6" autocomplete="new-password"></label>
-          <label>Confirmar nova senha <input name="confirmacao" type="password" required minlength="6" autocomplete="new-password"></label>
-        </div>
-        <div class="botoes-linha">
-          <button type="submit">Salvar nova senha</button>
-          <button type="button" class="secundario" id="botao-cancelar-senha">Cancelar</button>
-        </div>
-      </form>
-      <p class="mensagem" id="msg-senha"></p>
     </section>
   </main>
 

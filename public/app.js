@@ -1018,6 +1018,11 @@ function mostrarSistema(usuario) {
   document.querySelectorAll('[data-perfis]').forEach((painel) => {
     painel.hidden = !painel.dataset.perfis.split(' ').includes(usuario.perfil);
   });
+  fecharMinhaSenha();
+  // RF-15: com senha temporária, só a troca de senha fica disponível
+  if (usuario.deveTrocarSenha) {
+    document.querySelectorAll('[data-perfis]').forEach((painel) => { painel.hidden = true; });
+  }
   document.querySelectorAll('#sistema .mensagem').forEach((m) => { m.textContent = ''; });
   document.getElementById('sistema').hidden = false;
 
@@ -1028,8 +1033,13 @@ function mostrarSistema(usuario) {
   document.getElementById('botoes-exportar').hidden = true;
   ultimoRelatorio = null;
 
+  if (usuario.deveTrocarSenha) {
+    abrirMinhaSenha(true);
+    return;
+  }
+
   if (usuario.perfil === 'GESTOR') {
-    fecharRedefinicaoSenha();
+    document.getElementById('aviso-senha-temporaria').hidden = true;
     listarUsuarios();
     const hoje = new Date();
     document.querySelector('#form-relatorio [name=mes]').value =
@@ -1043,8 +1053,6 @@ function mostrarSistema(usuario) {
 // ---------- Usuários do sistema (RF-14, Gestor) ----------
 
 const formUsuario = document.getElementById('form-usuario');
-const formSenha = document.getElementById('form-senha');
-let usuarioDaSenha = null;
 
 // CRM para médico, COREN para enfermeiro; os outros perfis não têm registro profissional
 function atualizarCampoRegistro() {
@@ -1059,28 +1067,51 @@ formUsuario.perfil.addEventListener('change', atualizarCampoRegistro);
 formUsuario.addEventListener('reset', () => setTimeout(atualizarCampoRegistro));
 atualizarCampoRegistro();
 
-function senhasConferem(form, idMensagem) {
-  if (form.senha.value !== form.confirmacao.value) {
-    mostrar(idMensagem, 'A confirmação não é igual à senha.', 'erro');
-    form.confirmacao.focus();
-    return false;
-  }
-  return true;
+// Mesmo comportamento do cadastro de doador: o CPF é conferido antes do resto do formulário
+conferirCpfAoDigitar({
+  form: formUsuario,
+  campos: document.getElementById('campos-usuario'),
+  status: document.getElementById('status-cpf-usuario'),
+  mensagemInicial: 'Informe o CPF para liberar o restante do cadastro.',
+  url: (cpf) => `/api/usuarios/cpf/${cpf}`,
+  existe: (r, travar) => {
+    if (r.cadastrado) return travar(`CPF já cadastrado para ${r.nome} (login "${r.login}").`, 'erro');
+    travar('CPF disponível.', 'sucesso');
+    document.getElementById('campos-usuario').disabled = false;
+    formUsuario.nome.focus();
+  },
+  naoExiste: (travar) => travar('Não foi possível conferir o CPF agora.', 'erro'),
+});
+
+// Mostra a senha temporária uma única vez, para o gestor entregar ao usuário
+function mostrarSenhaTemporaria(nome, senha) {
+  const aviso = document.getElementById('aviso-senha-temporaria');
+  aviso.innerHTML = '';
+  aviso.append(
+    criar('span', null, `Senha temporária de ${nome}: `),
+    criar('code', null, senha),
+    criar('span', null, ' Entregue a ele(a). No próximo acesso, o sistema vai pedir para criar uma senha nova. Esta senha não aparece de novo.'),
+  );
+  aviso.hidden = false;
 }
 
-function fecharRedefinicaoSenha() {
-  usuarioDaSenha = null;
-  formSenha.reset();
-  formSenha.hidden = true;
-}
-
-function abrirRedefinicaoSenha(u) {
-  usuarioDaSenha = u;
-  formSenha.reset();
-  document.getElementById('titulo-senha').textContent = `Redefinir senha de ${u.nome} (${u.login})`;
-  mostrar('msg-senha', '', '');
-  formSenha.hidden = false;
-  formSenha.senha.focus();
+// Botão que pede um segundo clique para confirmar ações que afetam outra pessoa
+function botaoComConfirmacao(texto, textoConfirmar, acao, classe = 'pequeno') {
+  const botao = criar('button', classe, texto);
+  botao.type = 'button';
+  let timer = null;
+  botao.addEventListener('click', async () => {
+    if (!botao.classList.contains('confirmando')) {
+      botao.classList.add('confirmando');
+      botao.textContent = textoConfirmar;
+      timer = setTimeout(() => { botao.classList.remove('confirmando'); botao.textContent = texto; }, 4000);
+      return;
+    }
+    clearTimeout(timer);
+    botao.disabled = true;
+    await acao();
+  });
+  return botao;
 }
 
 async function listarUsuarios() {
@@ -1091,17 +1122,42 @@ async function listarUsuarios() {
   if (!resposta.ok) return mostrar('msg-usuario', usuarios.erro ?? 'Erro ao listar usuários.', 'erro');
 
   destino.innerHTML = '';
-  const tabela = criarTabela(['Nome', 'Login', 'Perfil', 'Registro', ''], []);
+  const tabela = criarTabela(['Nome', 'Login', 'Perfil', 'Situação', 'Senha', ''], []);
   const corpo = tabela.tBodies[0];
   for (const u of usuarios) {
     const linha = corpo.insertRow();
-    for (const valor of [u.nome, u.login, ROTULO_PERFIL[u.perfil], u.registroProfissional ?? '—']) {
+    if (!u.ativo) linha.className = 'inativo';
+    // Fica registrado quem gerou a senha temporária e quando, enquanto ela não for trocada
+    const quem = (u.senhaRedefinidaPor ?? 'gestor').split(' ')[0];
+    const quando = u.senhaRedefinidaEm ? formatarData(u.senhaRedefinidaEm).slice(0, 5) : '';
+    const senha = u.deveTrocarSenha ? `Temporária (${quem}, ${quando})` : 'Própria';
+    const perfil = ROTULO_PERFIL[u.perfil] + (u.registroProfissional ? ` · ${u.registroProfissional}` : '');
+    for (const valor of [u.nome, u.login, perfil, u.ativo ? 'Ativo' : 'Desativado', senha]) {
       linha.insertCell().textContent = valor;
     }
-    const botao = criar('button', 'pequeno', 'Redefinir senha');
-    botao.type = 'button';
-    botao.addEventListener('click', () => abrirRedefinicaoSenha(u));
-    linha.insertCell().appendChild(botao);
+    const acoes = linha.insertCell();
+    acoes.className = 'acoes-usuario';
+    if (u.id === usuarioAtual?.id) {
+      acoes.appendChild(criar('span', 'vazio', 'Você'));
+      continue;
+    }
+    if (u.ativo) {
+      acoes.appendChild(botaoComConfirmacao('Gerar senha', 'Confirmar?', async () => {
+        try {
+          const { senhaTemporaria } = await enviar(`/api/usuarios/${u.id}/senha`, {}, 'PUT');
+          mostrar('msg-usuario', '', '');
+          mostrarSenhaTemporaria(u.nome, senhaTemporaria);
+        } catch (erro) { mostrar('msg-usuario', erro.message, 'erro'); }
+        await listarUsuarios();
+      }));
+    }
+    acoes.appendChild(botaoComConfirmacao(u.ativo ? 'Desativar' : 'Reativar', 'Confirmar?', async () => {
+      try {
+        await enviar(`/api/usuarios/${u.id}/situacao`, { ativo: !u.ativo }, 'PUT');
+        mostrar('msg-usuario', u.ativo ? `${u.nome} não consegue mais entrar no sistema.` : `${u.nome} pode entrar de novo.`, 'sucesso');
+      } catch (erro) { mostrar('msg-usuario', erro.message, 'erro'); }
+      await listarUsuarios();
+    }, u.ativo ? 'pequeno secundario' : 'pequeno'));
   }
   const caixa = criar('div', 'rolagem');
   caixa.appendChild(tabela);
@@ -1110,11 +1166,10 @@ async function listarUsuarios() {
 
 formUsuario.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!senhasConferem(e.target, 'msg-usuario')) return;
-  const { confirmacao, ...dados } = dadosDoForm(e.target);
   try {
-    const usuario = await enviar('/api/usuarios', dados);
-    mostrar('msg-usuario', `Usuário ${usuario.nome} cadastrado. Ele já pode entrar com o login "${usuario.login}".`, 'sucesso');
+    const { usuario, senhaTemporaria } = await enviar('/api/usuarios', dadosDoForm(e.target));
+    mostrar('msg-usuario', `Usuário ${usuario.nome} cadastrado com o login "${usuario.login}".`, 'sucesso');
+    mostrarSenhaTemporaria(usuario.nome, senhaTemporaria);
     e.target.reset();
     await listarUsuarios();
   } catch (erro) {
@@ -1122,23 +1177,62 @@ formUsuario.addEventListener('submit', async (e) => {
   }
 });
 
-formSenha.addEventListener('submit', async (e) => {
+// ---------- Alterar minha senha (RF-15, todos os perfis) ----------
+
+const painelMinhaSenha = document.getElementById('painel-minha-senha');
+const formMinhaSenha = document.getElementById('form-minha-senha');
+
+function abrirMinhaSenha(obrigatorio = false) {
+  formMinhaSenha.reset();
+  mostrar('msg-minha-senha', '', '');
+  document.getElementById('aviso-troca-senha').hidden = !obrigatorio;
+  document.getElementById('botao-cancelar-minha-senha').hidden = obrigatorio;
+  painelMinhaSenha.hidden = false;
+  painelMinhaSenha.scrollIntoView({ block: 'start' });
+  formMinhaSenha.senhaAtual.focus();
+}
+
+function fecharMinhaSenha() {
+  formMinhaSenha.reset();
+  painelMinhaSenha.hidden = true;
+}
+
+document.getElementById('botao-minha-senha').addEventListener('click', () => abrirMinhaSenha(Boolean(usuarioAtual?.deveTrocarSenha)));
+document.getElementById('botao-cancelar-minha-senha').addEventListener('click', fecharMinhaSenha);
+
+formMinhaSenha.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!usuarioDaSenha || !senhasConferem(e.target, 'msg-senha')) return;
+  if (e.target.novaSenha.value !== e.target.confirmacao.value) {
+    mostrar('msg-minha-senha', 'A confirmação não é igual à nova senha.', 'erro');
+    return;
+  }
   try {
-    await enviar(`/api/usuarios/${usuarioDaSenha.id}/senha`, { senha: e.target.senha.value }, 'PUT');
-    const nome = usuarioDaSenha.nome;
-    fecharRedefinicaoSenha();
-    mostrar('msg-senha', `Senha de ${nome} redefinida.`, 'sucesso');
+    const usuario = await enviar('/api/minha-senha',
+      { senhaAtual: e.target.senhaAtual.value, novaSenha: e.target.novaSenha.value }, 'PUT');
+    const eraObrigatorio = usuarioAtual?.deveTrocarSenha;
+    fecharMinhaSenha();
+    if (eraObrigatorio) mostrarSistema(usuario);
+    mostrar('msg-minha-senha', '', '');
+    alertaTopo('Senha alterada com sucesso.');
   } catch (erro) {
-    mostrar('msg-senha', erro.message, 'erro');
+    mostrar('msg-minha-senha', erro.message, 'erro');
   }
 });
 
-document.getElementById('botao-cancelar-senha').addEventListener('click', () => {
-  fecharRedefinicaoSenha();
-  mostrar('msg-senha', '', '');
-});
+// Aviso curto no alto da página, que some sozinho
+function alertaTopo(texto) {
+  let el = document.getElementById('alerta-topo');
+  if (!el) {
+    el = criar('div', 'alerta-topo');
+    el.id = 'alerta-topo';
+    el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+  }
+  el.textContent = texto;
+  el.classList.add('visivel');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('visivel'), 3500);
+}
 
 document.getElementById('form-login').addEventListener('submit', async (e) => {
   e.preventDefault();
