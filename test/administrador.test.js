@@ -18,20 +18,19 @@ const conta = (Classe, id, extra = {}) =>
 
 const novoGestor = { nome: 'Helena Prado', cpf: '529.982.247-25', login: 'helena', perfil: 'GESTOR' };
 
-test('RN-12: gestor cria contas operacionais, mas não de gestor nem de administrador', () => {
+test('RN-12: só o administrador gerencia contas; o gestor não tem essas funções', () => {
   const gestor = conta(Gestor, 1);
-  assert.ok(gestor.cadastrarUsuario({ ...novoGestor, perfil: 'RECEPCIONISTA' }) instanceof Recepcionista);
-  assert.throws(() => gestor.cadastrarUsuario(novoGestor), PermissaoNegada);
-  assert.throws(() => gestor.cadastrarUsuario({ ...novoGestor, perfil: 'ADMINISTRADOR' }), PermissaoNegada);
+  for (const metodo of ['cadastrarUsuario', 'redefinirSenha', 'desativarUsuario', 'reativarUsuario']) {
+    assert.equal(typeof gestor[metodo], 'undefined', metodo);
+  }
 });
 
-test('RN-12: gestor não desativa nem gera senha de outro gestor', () => {
+test('RF-13: gestor corrige dados do doador com as mesmas regras da recepção', async () => {
+  const { Doador } = await import('../src/models/Doador.js');
   const gestor = conta(Gestor, 1);
-  const outro = conta(Gestor, 2);
-  assert.throws(() => gestor.desativarUsuario(outro), /não pode desativar a conta de um gestor/);
-  assert.throws(() => gestor.redefinirSenha(outro), PermissaoNegada);
-  assert.equal(outro.estaAtivo(), true);
-  assert.equal(outro.precisaTrocarSenha(), false);
+  const doador = new Doador({ id: 1, nome: 'Ana', cpf: '529.982.247-25', dataNascimento: '1990-01-01', sexo: 'FEMININO', tipoSanguineo: 'A_POSITIVO' });
+  assert.equal(gestor.editarDoador(doador, { nome: 'Ana Lima' }, true).nome, 'Ana Lima');
+  assert.throws(() => gestor.editarDoador(doador, { tipoSanguineo: 'O_NEGATIVO' }, true), /RN-08/);
 });
 
 test('RN-12: administrador gerencia gestores e contas operacionais', () => {

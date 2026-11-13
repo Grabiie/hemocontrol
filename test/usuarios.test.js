@@ -7,6 +7,7 @@ import { Recepcionista } from '../src/models/Recepcionista.js';
 import { Medico } from '../src/models/Medico.js';
 import { Enfermeiro } from '../src/models/Enfermeiro.js';
 import { Gestor } from '../src/models/Gestor.js';
+import { Administrador } from '../src/models/Administrador.js';
 import { gerarHashSenha, conferirSenha } from '../src/models/senha.js';
 import { Doador } from '../src/models/Doador.js';
 import { formatarDataISO } from '../src/models/datas.js';
@@ -131,9 +132,9 @@ test('RN-02: acima de 69 anos o doador não pode doar', () => {
   assert.match(veterano.listarImpedimentos(new Date('2026-11-12T10:00:00'), [new Date('2026-01-01')]).join(' '), /69 anos/);
 });
 
-test('RF-14: gestor cadastra usuário do perfil escolhido, com senha temporária', () => {
-  const gestor = new Gestor({ ...dados('chefe'), id: 1 });
-  const medico = gestor.cadastrarUsuario({
+test('RF-14: administrador cadastra usuário do perfil escolhido, com senha temporária', () => {
+  const admin = new Administrador({ ...dados('chefe'), id: 1 });
+  const medico = admin.cadastrarUsuario({
     nome: ' Joana Silva ', cpf: '529.982.247-25', login: 'Joana.Silva', perfil: 'MEDICO', registroProfissional: 'CRM-SP 1',
   });
   assert.ok(medico instanceof Medico);
@@ -141,7 +142,7 @@ test('RF-14: gestor cadastra usuário do perfil escolhido, com senha temporária
   assert.equal(medico.getNome(), 'Joana Silva');
   assert.equal(medico.crm, 'CRM-SP 1');
 
-  const temporaria = gestor.redefinirSenha(medico);
+  const temporaria = admin.redefinirSenha(medico);
   assert.match(temporaria, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
   assert.ok(!medico.senhaHash.includes(temporaria));
   assert.equal(medico.precisaTrocarSenha(), true);
@@ -149,19 +150,19 @@ test('RF-14: gestor cadastra usuário do perfil escolhido, com senha temporária
 });
 
 test('RF-14: cadastro de usuário recusa dados inválidos', () => {
-  const gestor = new Gestor(dados('chefe2'));
+  const admin = new Administrador(dados('chefe2'));
   const base = { nome: 'Ana', cpf: '529.982.247-25', login: 'ana', perfil: 'RECEPCIONISTA' };
-  assert.throws(() => gestor.cadastrarUsuario({ ...base, perfil: 'ADMIN' }), /perfil/);
-  assert.throws(() => gestor.cadastrarUsuario({ ...base, cpf: '123.456.789-00' }), /CPF/);
-  assert.throws(() => gestor.cadastrarUsuario({ ...base, login: 'a b' }), /login/);
-  assert.throws(() => gestor.cadastrarUsuario({ ...base, perfil: 'ENFERMEIRO' }), /COREN/);
-  assert.ok(gestor.cadastrarUsuario(base) instanceof Recepcionista);
+  assert.throws(() => admin.cadastrarUsuario({ ...base, perfil: 'ADMIN' }), /perfil/);
+  assert.throws(() => admin.cadastrarUsuario({ ...base, cpf: '123.456.789-00' }), /CPF/);
+  assert.throws(() => admin.cadastrarUsuario({ ...base, login: 'a b' }), /login/);
+  assert.throws(() => admin.cadastrarUsuario({ ...base, perfil: 'ENFERMEIRO' }), /COREN/);
+  assert.ok(admin.cadastrarUsuario(base) instanceof Recepcionista);
 });
 
 test('RF-15: só o próprio usuário define a senha definitiva, confirmando a atual', () => {
-  const gestor = new Gestor({ ...dados('chefe3'), id: 1 });
+  const admin = new Administrador({ ...dados('chefe3'), id: 1 });
   const recep = new Recepcionista({ ...dados('rec3'), id: 2 });
-  const temporaria = gestor.redefinirSenha(recep);
+  const temporaria = admin.redefinirSenha(recep);
   assert.equal(recep.autenticar('rec3', 'segredo'), false);
   assert.throws(() => recep.trocarSenha('errada', 'minhaSenha1'), /atual está incorreta/);
   assert.throws(() => recep.trocarSenha(temporaria, '123'), /6 caracteres/);
@@ -170,13 +171,13 @@ test('RF-15: só o próprio usuário define a senha definitiva, confirmando a at
   assert.equal(recep.autenticar('rec3', 'minhaSenha1'), true);
 });
 
-test('RF-14: gestor desativa e reativa contas, mas não a própria', () => {
-  const gestor = new Gestor({ ...dados('chefe4'), id: 1 });
+test('RF-14: administrador desativa e reativa contas, mas não a própria', () => {
+  const admin = new Administrador({ ...dados('chefe4'), id: 1 });
   const enf = new Enfermeiro({ ...dados('enf4'), id: 3, coren: 'X' });
-  gestor.desativarUsuario(enf);
+  admin.desativarUsuario(enf);
   assert.equal(enf.estaAtivo(), false);
-  gestor.reativarUsuario(enf);
+  admin.reativarUsuario(enf);
   assert.equal(enf.estaAtivo(), true);
-  assert.throws(() => gestor.desativarUsuario(gestor), /própria conta/);
-  assert.throws(() => gestor.redefinirSenha(gestor), /própria senha/);
+  assert.throws(() => admin.desativarUsuario(admin), /própria conta/);
+  assert.throws(() => admin.redefinirSenha(admin), /própria senha/);
 });
