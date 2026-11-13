@@ -68,6 +68,10 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 **Nome:** Registrar e consultar o log de atividades
 **Descrição:** O sistema deve registrar em um log as ações relevantes, com data e hora, usuário, ação, descrição e origem (endereço IP, integração ou terminal): entradas e saídas, logins recusados, tentativas de acesso a funções de outro perfil, cadastro e alteração de doadores (só quais campos mudaram, sem os valores), triagens, inaptidões, doações, descartes, solicitações, atendimentos, relatórios e todas as ações de gestão de contas e senhas. O administrador consulta o log filtrando por período (até 90 dias por vez), usuário e ação, com paginação e exportação em planilha (CSV).
 
+### RF-17
+**Nome:** Rastrear doação ou bolsa
+**Descrição:** O sistema deve permitir que o gestor consulte, em um único campo, uma doação pelo seu número ou uma bolsa de sangue pelo seu código (com ou sem o prefixo "HC-"). O resultado mostra a doação (data, volume, se a coleta foi concluída ou interrompida e a triagem de origem), o doador (nome, tipo sanguíneo e CPF mascarado) e a bolsa (tipo, volume, coleta, validade e situação: disponível, vencida aguardando descarte, entregue ou descartada). Para bolsa entregue, mostra o hospital e a solicitação que a receberam; para bolsa descartada, a data do descarte.
+
 ## Requisitos Não Funcionais (RNF)
 
 ### RNF-01

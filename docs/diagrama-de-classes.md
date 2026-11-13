@@ -96,11 +96,14 @@ Gestor
 + atenderSolicitacao(solicitacao: Solicitacao, estoque: Estoque, aceitaParcial: boolean): boolean
 + descartarBolsasVencidas(estoque: Estoque): int
 + gerarRelatorioMensal(mes: int, ano: int): RelatorioMensal
++ rastrear(termo: String): Doacao
 + cadastrarUsuario(nome: String, cpf: String, login: String, perfil: String, registroProfissional: String): Usuario
 + redefinirSenha(usuario: Usuario): String
 + desativarUsuario(usuario: Usuario): void
 + reativarUsuario(usuario: Usuario): void
 ```
+
+No código, `rastrear()` interpreta o que foi digitado (nº da doação ou código da bolsa) e a busca no banco é feita pela camada de persistência, que devolve a doação com a bolsa e o destino dela.
 
 ```
 Administrador
@@ -251,6 +254,7 @@ BolsaSangue
 -----------------------------------
 + calcularValidade(): Date
 + estaVencida(dataReferencia: Date): boolean
++ situacao(dataReferencia: Date): String
 + descartar(): void
 + marcarEntregue(): void
 ```
@@ -361,6 +365,7 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 | RF-13 e RN-08 (editar doador) | `Recepcionista.editarDoador()` |
 | RF-14 (gerenciar usuários) | `cadastrarUsuario()`, `redefinirSenha()`, `desativarUsuario()` e `reativarUsuario()` em Gestor e Administrador, `Usuario.ativo` e `Usuario.redefinirSenhaTemporaria()` |
 | RN-12 (quem gerencia cada conta) | `Gestor.PERFIS_GERENCIADOS`, `Administrador.PERFIS_GERENCIADOS` e `podeGerenciar()` |
+| RF-17 (rastrear doação ou bolsa) | `Gestor.rastrear()` e `BolsaSangue.situacao()` |
 | RF-16 (log de atividades) | classe `RegistroLog`, enumeração `AcaoLog`, `Administrador.consultarLogs()` e `Administrador.DIAS_MAXIMOS_CONSULTA` |
 | RNF-07 (integridade do log) | `RegistroLog` sem métodos de alteração |
 | RF-15 (alterar a própria senha) | `Usuario.trocarSenha()`, `Usuario.deveTrocarSenha` e `Usuario.SENHA_MINIMA` |
