@@ -65,6 +65,6 @@ test('RF-05: lista as bolsas que vencem nos próximos 7 dias, da validade mais p
   assert.equal(Estoque.DIAS_ALERTA_VENCIMENTO, 7);
   assert.deepEqual(estoque.listarProximasDoVencimento(HOJE).map((b) => b.codigo), [venceEm2.codigo, venceEm6.codigo]);
 
-  venceEm2.marcarEntregue();
+  venceEm2.marcarEntregue(HOJE); // data fixa: o teste não pode depender do dia em que roda
   assert.equal(estoque.listarProximasDoVencimento(HOJE).length, 1);
 });

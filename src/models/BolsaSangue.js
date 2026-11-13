@@ -46,8 +46,8 @@ export class BolsaSangue {
     this.#dataDescarte = new Date(data);
   }
 
-  marcarEntregue() {
-    if (this.estaVencida()) throw new Error('Bolsa vencida não pode ser entregue (RN-04).');
+  marcarEntregue(data = new Date()) {
+    if (this.estaVencida(data)) throw new Error('Bolsa vencida não pode ser entregue (RN-04).');
     this.#status = StatusBolsa.ENTREGUE;
   }
 
