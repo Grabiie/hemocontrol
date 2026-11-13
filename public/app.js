@@ -436,9 +436,10 @@ function desenharGraficoEstoque(tipos, limiteCritico) {
     x1: esquerda, x2: L - direita + 8, y1: yLimite, y2: yLimite,
     style: 'stroke: var(--suave)', 'stroke-width': 1, 'stroke-dasharray': '5 4',
   }));
-  desenho.appendChild(estreito
-    ? svg('text', { x: L - direita, y: yLimite - 6, 'text-anchor': 'end', 'font-size': 11, class: 'limite' }, `limite crítico: ${limiteCritico}`)
-    : svg('text', { x: L - direita + 14, y: yLimite + 4, 'font-size': 12, class: 'limite' }, `limite crítico: ${limiteCritico}`));
+  // Em tela estreita não sobra margem à direita e as colunas cobririam o texto: o limite vai para a legenda
+  if (!estreito) {
+    desenho.appendChild(svg('text', { x: L - direita + 14, y: yLimite + 4, 'font-size': 12, class: 'limite' }, `limite crítico: ${limiteCritico}`));
+  }
 
   const dica = criar('div', 'dica-grafico');
   dica.hidden = true;
@@ -497,6 +498,7 @@ function desenharGraficoEstoque(tipos, limiteCritico) {
     item.style.setProperty('--cor', cor);
     legenda.appendChild(item);
   }
+  if (estreito) legenda.appendChild(criar('span', 'limite', `Limite crítico: ${limiteCritico}`));
   destino.append(desenho, dica, legenda);
 }
 
