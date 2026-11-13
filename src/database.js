@@ -32,7 +32,7 @@ db.exec(`
     cpf TEXT NOT NULL,
     login TEXT NOT NULL UNIQUE,
     senha_hash TEXT NOT NULL,              -- RNF-02
-    perfil TEXT NOT NULL,                  -- RECEPCIONISTA, GESTOR, MEDICO ou ENFERMEIRO
+    perfil TEXT NOT NULL,                  -- RECEPCIONISTA, GESTOR, MEDICO, ENFERMEIRO ou ADMINISTRADOR
     registro_profissional TEXT             -- CRM do médico ou COREN do enfermeiro
   );
 
@@ -107,6 +107,24 @@ db.exec(`
     status TEXT NOT NULL,
     data_descarte TEXT                     -- preenchida quando a bolsa é descartada (RF-09)
   );
+
+  -- RF-16: registro de atividades. usuario_id fica nulo quando não há usuário logado
+  -- (login recusado, solicitação vinda da integração, comando no terminal).
+  CREATE TABLE IF NOT EXISTS log_auditoria (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    data_hora TEXT NOT NULL,
+    usuario_id INTEGER REFERENCES usuario(id),
+    acao TEXT NOT NULL,
+    descricao TEXT NOT NULL,
+    origem TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS idx_log_data ON log_auditoria(data_hora);
+
+  -- RNF-07: o log só recebe linhas novas; o próprio banco recusa alterar ou apagar
+  CREATE TRIGGER IF NOT EXISTS log_sem_alteracao BEFORE UPDATE ON log_auditoria
+  BEGIN SELECT RAISE(ABORT, 'O log de atividades não pode ser alterado (RNF-07).'); END;
+  CREATE TRIGGER IF NOT EXISTS log_sem_exclusao BEFORE DELETE ON log_auditoria
+  BEGIN SELECT RAISE(ABORT, 'O log de atividades não pode ser apagado (RNF-07).'); END;
 `);
 
 // Migração: bancos criados antes da coluna "motivos" recebem a coluna nova

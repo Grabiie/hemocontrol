@@ -1,5 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { buscarUsuarioPorId } from './repositorios.js';
+import { registrar } from './auditoria.js';
+import { AcaoLog } from './models/enums.js';
 
 // Sessões em memória: token aleatório no cookie -> id do usuário.
 // Reiniciar o servidor encerra todas as sessões.
@@ -67,6 +69,8 @@ export function exigir(...classesPermitidas) {
       return res.status(403).json({ erro: 'Crie uma senha nova antes de continuar.', trocarSenha: true });
     }
     if (!classesPermitidas.some((Classe) => req.usuario instanceof Classe)) {
+      // RF-16: tentativa de usar uma função de outro perfil fica registrada
+      registrar(req, AcaoLog.ACESSO_NEGADO, `Função de outro perfil (${req.method} ${req.originalUrl}).`);
       return res.status(403).json({ erro: 'Seu perfil não tem permissão para esta ação.' });
     }
     next();

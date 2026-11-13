@@ -6,6 +6,8 @@ import { BolsaSangue } from './models/BolsaSangue.js';
 import { Estoque } from './models/Estoque.js';
 import { Recepcionista } from './models/Recepcionista.js';
 import { Gestor } from './models/Gestor.js';
+import { Administrador } from './models/Administrador.js';
+import { RegistroLog } from './models/RegistroLog.js';
 import { Medico } from './models/Medico.js';
 import { Enfermeiro } from './models/Enfermeiro.js';
 import { gerarHashSenha } from './models/senha.js';
@@ -20,6 +22,7 @@ const CLASSE_POR_PERFIL = {
   [Gestor.PERFIL]: Gestor,
   [Medico.PERFIL]: Medico,
   [Enfermeiro.PERFIL]: Enfermeiro,
+  [Administrador.PERFIL]: Administrador,
 };
 
 function linhaParaUsuario(linha) {
@@ -89,14 +92,14 @@ export function salvarUsuario(usuario) {
   return buscarUsuarioPorId(Number(lastInsertRowid));
 }
 
-// RF-14 e RF-15: grava a senha (só o hash, RNF-02). Quando quem redefiniu foi o gestor,
-// guarda também quando e por quem, para ficar registrado.
-export function atualizarSenha(usuario, gestorId = null) {
+// RF-14 e RF-15: grava a senha (só o hash, RNF-02). Quando quem redefiniu foi o gestor
+// ou o administrador, guarda também quando e por quem, para aparecer na lista de usuários.
+export function atualizarSenha(usuario, responsavelId = null) {
   db.prepare('UPDATE usuario SET senha_hash = ?, deve_trocar_senha = ? WHERE id = ?')
     .run(usuario.senhaHash, usuario.precisaTrocarSenha() ? 1 : 0, usuario.id);
-  if (gestorId !== null) {
+  if (responsavelId !== null) {
     db.prepare('UPDATE usuario SET senha_redefinida_em = ?, senha_redefinida_por = ? WHERE id = ?')
-      .run(new Date().toISOString(), gestorId, usuario.id);
+      .run(new Date().toISOString(), responsavelId, usuario.id);
   }
 }
 
@@ -123,6 +126,7 @@ const USUARIOS_DEMO = [
   { nome: 'Marcos Lima', nomeAntigo: 'Dr. Marcos Lima', cpf: '39053344705', login: 'medico', perfil: Medico.PERFIL, registro: 'CRM-SP 123456' },
   { nome: 'Paula Reis', nomeAntigo: 'Enf. Paula Reis', cpf: '15350946056', login: 'enfermeiro', perfil: Enfermeiro.PERFIL, registro: 'COREN-SP 654321' },
   { nome: 'Gustavo Almeida', nomeAntigo: 'Gustavo Gestor', cpf: '28625587887', login: 'gestor', perfil: Gestor.PERFIL },
+  { nome: 'Carla Mendes', cpf: '52998224725', login: 'admin', perfil: Administrador.PERFIL },
 ];
 
 export function garantirUsuariosDemo() {
@@ -133,12 +137,46 @@ export function garantirUsuariosDemo() {
   const renomear = db.prepare('UPDATE usuario SET nome = ? WHERE login = ? AND nome = ?');
   let criados = 0;
   for (const u of USUARIOS_DEMO) {
-    renomear.run(u.nome, u.login, u.nomeAntigo);
+    if (u.nomeAntigo) renomear.run(u.nome, u.login, u.nomeAntigo);
     if (buscarUsuarioPorLogin(u.login)) continue;
     inserir.run(u.nome, u.cpf, u.login, gerarHashSenha(SENHA_DEMO), u.perfil, u.registro ?? null);
     criados++;
   }
   return criados;
+}
+
+// ---------- Log de atividades (RF-16, RNF-07) ----------
+
+// Só existe inserção: não há função para alterar ou apagar logs
+export function registrarLog(registro) {
+  db.prepare('INSERT INTO log_auditoria (data_hora, usuario_id, acao, descricao, origem) VALUES (?, ?, ?, ?, ?)')
+    .run(registro.dataHora.toISOString(), registro.usuario?.id ?? null, registro.acao, registro.descricao, registro.origem);
+}
+
+// Busca os logs do filtro (já conferido por Administrador.consultarLogs), do mais novo para o mais antigo
+export function listarLogs({ de, ate, usuarioId = null, acao = null }, { limite = 100, deslocamento = 0 } = {}) {
+  const condicoes = ['l.data_hora BETWEEN ? AND ?'];
+  const valores = [de.toISOString(), ate.toISOString()];
+  if (usuarioId) { condicoes.push('l.usuario_id = ?'); valores.push(usuarioId); }
+  if (acao) { condicoes.push('l.acao = ?'); valores.push(acao); }
+  const where = condicoes.join(' AND ');
+  const total = db.prepare(`SELECT COUNT(*) AS n FROM log_auditoria l WHERE ${where}`).get(...valores).n;
+  const linhas = db
+    .prepare(
+      `SELECT l.*, u.nome AS usuario_nome, u.login AS usuario_login, u.perfil AS usuario_perfil
+       FROM log_auditoria l LEFT JOIN usuario u ON u.id = l.usuario_id
+       WHERE ${where} ORDER BY l.data_hora DESC, l.id DESC LIMIT ? OFFSET ?`,
+    )
+    .all(...valores, limite, deslocamento);
+  const registros = linhas.map((l) => new RegistroLog({
+    id: l.id,
+    dataHora: l.data_hora,
+    usuario: l.usuario_id ? { id: l.usuario_id, nome: l.usuario_nome, login: l.usuario_login, perfil: l.usuario_perfil } : null,
+    acao: l.acao,
+    descricao: l.descricao,
+    origem: l.origem,
+  }));
+  return { total, registros };
 }
 
 // ---------- Doador ----------

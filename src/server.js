@@ -8,19 +8,24 @@ import { Recepcionista } from './models/Recepcionista.js';
 import { ProfissionalDeSaude } from './models/ProfissionalDeSaude.js';
 import { Enfermeiro } from './models/Enfermeiro.js';
 import { Gestor } from './models/Gestor.js';
+import { Administrador } from './models/Administrador.js';
+import { PermissaoNegada } from './models/gestaoDeContas.js';
 import { Usuario } from './models/Usuario.js';
 import { Medico } from './models/Medico.js';
 import { Triagem } from './models/Triagem.js';
 import { Solicitacao } from './models/Solicitacao.js';
-import { TipoSanguineo, ROTULO_TIPO } from './models/enums.js';
+import { TipoSanguineo, ROTULO_TIPO, AcaoLog, ROTULO_ACAO_LOG } from './models/enums.js';
 import * as repo from './repositorios.js';
 import { carregarUsuario, exigir, iniciarSessao, encerrarSessao, encerrarOutrasSessoes } from './sessoes.js';
+import { registrar, origemDaRequisicao } from './auditoria.js';
 
 const app = express();
 const PORTA = process.env.PORT ?? 3000;
 const pastaPublica = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 
 app.use(express.json());
+// Atrás de um proxy, o IP de origem do log (RF-16) vem do cabeçalho X-Forwarded-For
+if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY);
 app.use(express.static(pastaPublica));
 app.use(carregarUsuario);
 
@@ -28,17 +33,24 @@ app.use(carregarUsuario);
 app.post('/api/login', (req, res) => {
   const { login, senha } = req.body ?? {};
   const usuario = repo.buscarUsuarioPorLogin(login);
+  const tentativa = String(login ?? '').trim().slice(0, 40);
   if (!usuario || !usuario.autenticar(login, senha)) {
+    // RF-16: a tentativa fica ligada à conta quando o login existe, para ver ataques a ela
+    registrar(req, AcaoLog.LOGIN_RECUSADO,
+      usuario ? `Senha incorreta para o login "${tentativa}".` : `Login inexistente: "${tentativa}".`, usuario);
     return res.status(401).json({ erro: 'Usuário ou senha inválidos.' });
   }
   if (!usuario.estaAtivo()) {
-    return res.status(403).json({ erro: 'Esta conta está desativada. Procure o gestor.' });
+    registrar(req, AcaoLog.LOGIN_RECUSADO, `Conta desativada: "${tentativa}".`, usuario);
+    return res.status(403).json({ erro: 'Esta conta está desativada. Procure o gestor ou o administrador.' });
   }
   iniciarSessao(res, usuario);
+  registrar(req, AcaoLog.LOGIN, usuario.precisaTrocarSenha() ? 'Com senha temporária.' : 'Com a própria senha.', usuario);
   res.json({ ...usuario.toJSON(), tema: repo.buscarTemaUsuario(usuario.id) });
 });
 
 app.post('/api/logout', (req, res) => {
+  if (req.usuario) registrar(req, AcaoLog.LOGOUT, 'Sessão encerrada pelo usuário.');
   encerrarSessao(req, res);
   res.status(204).end();
 });
@@ -62,57 +74,112 @@ app.put('/api/preferencias/tema', exigir(Usuario), (req, res) => {
 app.put('/api/minha-senha', (req, res) => {
   if (!req.usuario) return res.status(401).json({ erro: 'Faça login para continuar.' });
   const { senhaAtual, novaSenha } = req.body ?? {};
+  const eraTemporaria = req.usuario.precisaTrocarSenha();
   req.usuario.trocarSenha(senhaAtual, novaSenha);
   repo.atualizarSenha(req.usuario);
   encerrarOutrasSessoes(req.usuario.id, req);
+  registrar(req, AcaoLog.SENHA_ALTERADA, eraTemporaria ? 'Trocou a senha temporária pela própria.' : 'Alterou a própria senha.');
   res.json({ ...req.usuario.toJSON(), tema: repo.buscarTemaUsuario(req.usuario.id) });
 });
 
-// RF-14 — Gerenciar usuários (Gestor)
-app.get('/api/usuarios', exigir(Gestor), (req, res) => {
-  res.json(repo.listarUsuarios());
+// RF-14 — Gerenciar usuários (Gestor e Administrador; RN-12 define quem cuida de quais perfis)
+const descreverConta = (u) => `${u.getNome()} (${u.login}, ${u.perfil.toLowerCase()})`;
+
+app.get('/api/usuarios', exigir(Gestor, Administrador), (req, res) => {
+  const responsavel = req.usuario;
+  res.json({
+    perfisGerenciados: responsavel.constructor.PERFIS_GERENCIADOS.map((Classe) => Classe.PERFIL),
+    usuarios: repo.listarUsuarios().map((u) => ({
+      ...u,
+      gerenciavel: u.id !== responsavel.id && responsavel.podeGerenciar(u),
+    })),
+  });
 });
 
 // Confere o CPF assim que é digitado, antes de preencher o resto do cadastro
-app.get('/api/usuarios/cpf/:cpf', exigir(Gestor), (req, res) => {
+app.get('/api/usuarios/cpf/:cpf', exigir(Gestor, Administrador), (req, res) => {
   const usuario = repo.buscarUsuarioPorCpf(req.params.cpf);
   res.json(usuario ? { cadastrado: true, nome: usuario.getNome(), login: usuario.login } : { cadastrado: false });
 });
 
-// Cadastra com senha temporária: o gestor a entrega e o usuário cria a definitiva no primeiro acesso
-app.post('/api/usuarios', exigir(Gestor), (req, res) => {
+// Cadastra com senha temporária: quem cadastra a entrega e o usuário cria a definitiva no primeiro acesso
+app.post('/api/usuarios', exigir(Gestor, Administrador), (req, res) => {
   const novo = req.usuario.cadastrarUsuario(req.body ?? {});
-  const senhaTemporaria = req.usuario.redefinirSenha(novo);
+  const senhaTemporaria = novo.redefinirSenhaTemporaria();
   const salvo = repo.salvarUsuario(novo);
   repo.atualizarSenha(salvo, req.usuario.id);
+  registrar(req, AcaoLog.USUARIO_CADASTRADO, `Cadastrou ${descreverConta(salvo)}.`);
   res.status(201).json({ usuario: salvo, senhaTemporaria });
 });
 
-app.put('/api/usuarios/:id/senha', exigir(Gestor), (req, res) => {
+function buscarConta(req, res) {
   const usuario = repo.buscarUsuarioPorId(Number(req.params.id));
-  if (!usuario) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+  if (!usuario) res.status(404).json({ erro: 'Usuário não encontrado.' });
+  return usuario;
+}
+
+app.put('/api/usuarios/:id/senha', exigir(Gestor, Administrador), (req, res) => {
+  const usuario = buscarConta(req, res);
+  if (!usuario) return;
   const senhaTemporaria = req.usuario.redefinirSenha(usuario);
   repo.atualizarSenha(usuario, req.usuario.id);
   encerrarOutrasSessoes(usuario.id, req);
+  registrar(req, AcaoLog.SENHA_REDEFINIDA, `Gerou senha temporária para ${descreverConta(usuario)}.`);
   res.json({ senhaTemporaria });
 });
 
 // Desativar no lugar de excluir: o histórico continua ligado a quem fez cada registro
-app.put('/api/usuarios/:id/situacao', exigir(Gestor), (req, res) => {
-  const usuario = repo.buscarUsuarioPorId(Number(req.params.id));
-  if (!usuario) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+app.put('/api/usuarios/:id/situacao', exigir(Gestor, Administrador), (req, res) => {
+  const usuario = buscarConta(req, res);
+  if (!usuario) return;
   if (req.body?.ativo) req.usuario.reativarUsuario(usuario);
   else req.usuario.desativarUsuario(usuario);
   repo.atualizarSituacaoUsuario(usuario);
   if (!usuario.estaAtivo()) encerrarOutrasSessoes(usuario.id, req);
+  registrar(req, usuario.estaAtivo() ? AcaoLog.USUARIO_REATIVADO : AcaoLog.USUARIO_DESATIVADO,
+    `${usuario.estaAtivo() ? 'Reativou' : 'Desativou'} ${descreverConta(usuario)}.`);
   res.json({ ativo: usuario.estaAtivo() });
 });
+
+// RF-16 — Consultar o log de atividades (Administrador)
+const POR_PAGINA = 50;
+
+app.get('/api/logs/acoes', exigir(Administrador), (req, res) => {
+  res.json(Object.values(AcaoLog).map((acao) => ({ acao, rotulo: ROTULO_ACAO_LOG[acao] })));
+});
+
+app.get('/api/logs', exigir(Administrador), (req, res) => {
+  const filtro = req.usuario.consultarLogs(req.query);
+  if (req.query.formato === 'csv') {
+    const { registros } = repo.listarLogs(filtro, { limite: 50_000 });
+    const campo = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const linhas = registros.map((r) => [
+      r.dataHora.toLocaleString('pt-BR'), r.usuario?.nome ?? '', r.usuario?.login ?? '',
+      ROTULO_ACAO_LOG[r.acao], r.descricao, r.origem,
+    ].map(campo).join(';'));
+    res.type('text/csv; charset=utf-8').attachment('log-de-atividades.csv');
+    return res.send('\uFEFF' + ['Data e hora;Nome;Login;Ação;Descrição;Origem', ...linhas].join('\r\n'));
+  }
+  const pagina = Math.max(1, Number(req.query.pagina) || 1);
+  const { total, registros } = repo.listarLogs(filtro, { limite: POR_PAGINA, deslocamento: (pagina - 1) * POR_PAGINA });
+  res.json({
+    total, pagina, porPagina: POR_PAGINA,
+    registros: registros.map((r) => ({ ...r.toJSON(), rotulo: ROTULO_ACAO_LOG[r.acao] })),
+  });
+});
+
+const CAMPOS_DOADOR = {
+  nome: 'nome', cpf: 'CPF', dataNascimento: 'nascimento', sexo: 'sexo',
+  tipoSanguineo: 'tipo sanguíneo', telefone: 'telefone', consentimentoResponsavel: 'consentimento do responsável',
+};
 
 // RF-02 — Cadastrar doador (Recepcionista)
 app.post('/api/doadores', exigir(Recepcionista), (req, res) => {
   const doador = new Doador(req.body);
   req.usuario.cadastrarDoador(doador);
-  res.status(201).json(repo.salvarDoador(doador));
+  const salvo = repo.salvarDoador(doador);
+  registrar(req, AcaoLog.DOADOR_CADASTRADO, `Doador nº ${salvo.id}: ${salvo.nome}.`);
+  res.status(201).json(salvo);
 });
 
 // RF-13 — Buscar doadores por nome ou CPF (Recepcionista)
@@ -130,7 +197,16 @@ app.put('/api/doadores/:id', exigir(Recepcionista), (req, res) => {
 
   const possuiDoacoes = repo.datasDoacoesDoDoador(atual.id).length > 0;
   const atualizado = req.usuario.editarDoador(atual, req.body ?? {}, possuiDoacoes);
-  res.json({ ...repo.atualizarDoador(atualizado).toJSON(), possuiDoacoes });
+  const salvo = repo.atualizarDoador(atualizado);
+  // RF-16: registra quais campos mudaram (sem copiar os valores, que são dados pessoais)
+  const antes = atual.toJSON();
+  const depois = salvo.toJSON();
+  const mudou = Object.keys(CAMPOS_DOADOR).filter((c) => String(antes[c] ?? '') !== String(depois[c] ?? ''));
+  if (mudou.length > 0) {
+    registrar(req, AcaoLog.DOADOR_ATUALIZADO,
+      `Doador nº ${salvo.id}: ${salvo.nome}. Alterou ${mudou.map((c) => CAMPOS_DOADOR[c]).join(', ')}.`);
+  }
+  res.json({ ...salvo.toJSON(), possuiDoacoes });
 });
 
 app.get('/api/doadores/:cpf', exigir(Recepcionista, ProfissionalDeSaude), (req, res) => {
@@ -139,7 +215,7 @@ app.get('/api/doadores/:cpf', exigir(Recepcionista, ProfissionalDeSaude), (req, 
   res.json(doador);
 });
 
-// RF-12 — Consultar histórico de doações (todos os perfis autenticados)
+// RF-12 — Consultar histórico de doações (todos os perfis; o Administrador usa para conferir registros do log)
 app.get('/api/doadores/:cpf/historico', exigir(Usuario), (req, res) => {
   const doador = repo.buscarDoadorPorCpf(req.params.cpf);
   if (!doador) return res.status(404).json({ erro: 'Doador não encontrado.' });
@@ -181,7 +257,10 @@ app.post('/api/triagens', exigir(ProfissionalDeSaude), (req, res) => {
   }
 
   triagem.avaliar(repo.datasDoacoesDoDoador(doador.id), repo.inaptidoesDoDoador(doador.id));
-  res.status(201).json(repo.salvarTriagem(triagem));
+  const salva = repo.salvarTriagem(triagem);
+  registrar(req, AcaoLog.TRIAGEM_REGISTRADA,
+    `Triagem nº ${salva.id} de ${doador.nome}: ${salva.estaApta() ? 'apto' : 'inapto'}.`);
+  res.status(201).json(salva);
 });
 
 // RF-11 — Registrar inaptidão temporária (Médico), estendendo a triagem inapta
@@ -195,6 +274,8 @@ app.post('/api/triagens/:id/inaptidao', exigir(Medico), (req, res) => {
   const { motivo, prazoDias } = req.body ?? {};
   const inaptidao = req.usuario.registrarInaptidao(triagem, motivo, prazoDias);
   repo.salvarInaptidao(inaptidao, triagem.id, req.usuario.id);
+  registrar(req, AcaoLog.INAPTIDAO_REGISTRADA,
+    `Triagem nº ${triagem.id} de ${triagem.doador.nome}: inapto até ${inaptidao.dataFim.toLocaleDateString('pt-BR')}.`);
   res.status(201).json(inaptidao);
 });
 
@@ -245,6 +326,9 @@ app.post('/api/doacoes', exigir(Enfermeiro), (req, res) => {
   const doacao = req.usuario.registrarDoacao(triagem, volumeMl, coletaInterrompida);
   const bolsa = doacao.gerarBolsa(); // null quando a doação foi cancelada
   const id = repo.salvarDoacaoComBolsa(doacao, bolsa);
+  registrar(req, AcaoLog.DOACAO_REGISTRADA, bolsa
+    ? `Doação nº ${id} de ${triagem.doador.nome}: ${doacao.volumeMl} mL, bolsa ${bolsa.codigo}.`
+    : `Doação nº ${id} de ${triagem.doador.nome}: coleta interrompida, sem bolsa.`);
   res.status(201).json({ id, cancelada: doacao.cancelada, bolsa });
 });
 
@@ -277,6 +361,10 @@ app.post('/api/estoque/descarte', exigir(Gestor), (req, res) => {
   const vencidas = estoque.listarVencidas();
   const quantidade = req.usuario.descartarBolsasVencidas(estoque);
   repo.salvarDescartes(vencidas);
+  if (quantidade > 0) {
+    registrar(req, AcaoLog.BOLSAS_DESCARTADAS,
+      `${quantidade} bolsa(s) vencida(s): ${vencidas.map((b) => b.codigo).join(', ')}.`);
+  }
   res.json({ quantidade, codigos: vencidas.map((b) => b.codigo) });
 });
 
@@ -284,6 +372,7 @@ app.post('/api/estoque/descarte', exigir(Gestor), (req, res) => {
 app.get('/api/relatorios/:ano/:mes', exigir(Gestor), (req, res) => {
   const relatorio = req.usuario.gerarRelatorioMensal(req.params.mes, req.params.ano);
   relatorio.calcularTotais(repo.datasTodasDoacoes(), repo.listarBolsas(), repo.datasAtendimentos());
+  registrar(req, AcaoLog.RELATORIO_GERADO, `Relatório de ${String(relatorio.mes).padStart(2, '0')}/${relatorio.ano}.`);
 
   const noMes = (data) =>
     data instanceof Date && data.getMonth() + 1 === relatorio.mes && data.getFullYear() === relatorio.ano;
@@ -313,6 +402,9 @@ app.get('/api/relatorios/:ano/:mes', exigir(Gestor), (req, res) => {
 
 // ---------- Solicitações de hospitais (RF-07, RF-08, RNF-05) ----------
 
+const descreverSolicitacao = (s) =>
+  `Solicitação nº ${s.id} de ${s.hospital.nome}: ${s.quantidade} bolsa(s) ${ROTULO_TIPO[s.tipoSanguineo]}`;
+
 app.get('/api/hospitais', exigir(Gestor), (req, res) => {
   res.json(repo.listarHospitais());
 });
@@ -333,7 +425,9 @@ app.post('/api/solicitacoes', exigir(Gestor), (req, res) => {
 
   const solicitacao = new Solicitacao({ hospital, tipoSanguineo, quantidade, origemManual: true });
   req.usuario.registrarSolicitacao(solicitacao);
-  res.status(201).json(repo.salvarSolicitacao(solicitacao));
+  const salva = repo.salvarSolicitacao(solicitacao);
+  registrar(req, AcaoLog.SOLICITACAO_REGISTRADA, `${descreverSolicitacao(salva)}, registro manual.`);
+  res.status(201).json(salva);
 });
 
 // RF-07 e RNF-05 — Registro pelo sistema do hospital, autenticado pela chave de acesso
@@ -346,7 +440,10 @@ app.post('/api/integracao/solicitacoes', (req, res) => {
 
   const { tipoSanguineo, quantidade } = req.body ?? {};
   const solicitacao = new Solicitacao({ hospital, tipoSanguineo, quantidade, origemManual: false });
-  res.status(201).json(repo.salvarSolicitacao(solicitacao));
+  const salva = repo.salvarSolicitacao(solicitacao);
+  registrar(req, AcaoLog.SOLICITACAO_REGISTRADA, `${descreverSolicitacao(salva)}, via integração.`, null,
+    `integração (${origemDaRequisicao(req)})`);
+  res.status(201).json(salva);
 });
 
 // RF-08 — Atender solicitação, priorizando as bolsas de validade mais próxima
@@ -366,6 +463,8 @@ app.post('/api/solicitacoes/:id/atendimento', exigir(Gestor), (req, res) => {
   }
 
   repo.salvarAtendimento(solicitacao);
+  registrar(req, AcaoLog.SOLICITACAO_ATENDIDA, `${descreverSolicitacao(solicitacao)}: ${
+    solicitacao.status === 'ATENDIDA' ? 'atendida' : `atendida parcialmente (${solicitacao.bolsas.length} bolsa(s))`}.`);
   res.json({
     ...solicitacao.toJSON(),
     // Fluxo alternativo 2a: alerta de estoque crítico após a baixa (RF-06)
@@ -375,6 +474,10 @@ app.post('/api/solicitacoes/:id/atendimento', exigir(Gestor), (req, res) => {
 
 // Erros de regra de negócio viram respostas 400 com mensagem legível
 app.use((erro, req, res, next) => {
+  if (erro instanceof PermissaoNegada) {
+    registrar(req, AcaoLog.ACESSO_NEGADO, `${erro.message} (${req.method} ${req.originalUrl})`);
+    return res.status(403).json({ erro: erro.message });
+  }
   res.status(400).json({ erro: erro.message });
 });
 
