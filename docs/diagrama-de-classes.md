@@ -39,6 +39,17 @@ StatusSolicitacao
 PENDENTE, ATENDIDA, ATENDIDA_PARCIALMENTE
 ```
 
+```
+<<enumeration>>
+AcaoLog
+LOGIN, LOGIN_RECUSADO, LOGOUT, ACESSO_NEGADO,
+SENHA_ALTERADA, SENHA_REDEFINIDA, USUARIO_CADASTRADO,
+USUARIO_DESATIVADO, USUARIO_REATIVADO, DOADOR_CADASTRADO,
+DOADOR_ATUALIZADO, TRIAGEM_REGISTRADA, INAPTIDAO_REGISTRADA,
+DOACAO_REGISTRADA, BOLSAS_DESCARTADAS, SOLICITACAO_REGISTRADA,
+SOLICITACAO_ATENDIDA, RELATORIO_GERADO
+```
+
 ## Classes
 
 ### Hierarquia de usuários
@@ -78,8 +89,9 @@ Recepcionista
 ```
 Gestor
 -----------------------------------
-(sem atributos próprios)
++ PERFIS_GERENCIADOS: List<String> = [RECEPCIONISTA, MEDICO, ENFERMEIRO] {readOnly}
 -----------------------------------
++ podeGerenciar(usuario: Usuario): boolean
 + registrarSolicitacao(solicitacao: Solicitacao): void
 + atenderSolicitacao(solicitacao: Solicitacao, estoque: Estoque, aceitaParcial: boolean): boolean
 + descartarBolsasVencidas(estoque: Estoque): int
@@ -88,6 +100,34 @@ Gestor
 + redefinirSenha(usuario: Usuario): String
 + desativarUsuario(usuario: Usuario): void
 + reativarUsuario(usuario: Usuario): void
+```
+
+```
+Administrador
+-----------------------------------
++ PERFIS_GERENCIADOS: List<String> = [RECEPCIONISTA, MEDICO, ENFERMEIRO, GESTOR] {readOnly}
++ DIAS_MAXIMOS_CONSULTA: int = 90 {readOnly}
+-----------------------------------
++ podeGerenciar(usuario: Usuario): boolean
++ cadastrarUsuario(nome: String, cpf: String, login: String, perfil: String, registroProfissional: String): Usuario
++ redefinirSenha(usuario: Usuario): String
++ desativarUsuario(usuario: Usuario): void
++ reativarUsuario(usuario: Usuario): void
++ consultarLogs(de: Date, ate: Date, usuario: Usuario, acao: AcaoLog): List<RegistroLog>
+```
+
+O Administrador não herda de Gestor: os dois são Usuario, mas o administrador não tem as funções do banco de sangue (estoque, solicitações, relatório). Os métodos de gestão de contas têm o mesmo nome nas duas classes; o que muda é `PERFIS_GERENCIADOS` (RN-12). No código, `consultarLogs()` confere o período e os filtros, e a busca no banco é feita pela camada de persistência.
+
+```
+RegistroLog
+-----------------------------------
+- id: int
+- dataHora: Date
+- acao: AcaoLog
+- descricao: String
+- origem: String
+-----------------------------------
+(sem métodos de alteração: o registro não muda depois de criado, RNF-07)
 ```
 
 ```
@@ -293,12 +333,15 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 | 15 | Solicitacao | 0..1 | recebe | 0..* | BolsaSangue | Associação |
 | 16 | Hospital | 1 | faz | 0..* | Solicitacao | Associação |
 | 17 | Gestor | 1 | gera | 0..* | RelatorioMensal | Associação |
+| 18 | Administrador | | — | | Usuario | Generalização |
+| 19 | Usuario | 0..1 | realiza | 0..* | RegistroLog | Associação |
 
 ### Justificativa das classificações (árvore de decisão da Aula 6 e 7)
 
-- **Generalização:** Recepcionista, Gestor e ProfissionalDeSaude "são um" Usuario, pois compartilham os dados de acesso. Médico e Enfermeiro "são um" ProfissionalDeSaude, como no diagrama de casos de uso.
+- **Generalização:** Recepcionista, Gestor, Administrador e ProfissionalDeSaude "são um" Usuario, pois compartilham os dados de acesso. Médico e Enfermeiro "são um" ProfissionalDeSaude, como no diagrama de casos de uso.
 - **Composição (Triagem e MedicaoClinica):** a parte sobrevive sem o todo? Não. Peso, pressão e hemoglobina só fazem sentido dentro de uma triagem.
 - **Agregação (Estoque e BolsaSangue):** a parte sobrevive sem o todo? Sim. A bolsa continua existindo depois de sair do estoque, quando é entregue a uma solicitação.
+- **Usuario e RegistroLog (0..1):** o log também registra ações sem usuário logado (login com conta inexistente, solicitação vinda da integração, comando no terminal), por isso o lado do Usuario é 0..1.
 - **Demais relacionamentos:** não há herança nem relação todo-parte, então são associações simples.
 
 ## Coerência com os outros artefatos
@@ -316,7 +359,10 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 | RN-09 (triagem do dia) | `Triagem.ehDoDia()` |
 | RN-10 (triagem repetida e limite diário) | `Triagem.LIMITE_DIARIO`, `Triagem.repeteMedicaoDe()` e `MedicaoClinica.equals()` |
 | RF-13 e RN-08 (editar doador) | `Recepcionista.editarDoador()` |
-| RF-14 (gerenciar usuários) | `Gestor.cadastrarUsuario()`, `Gestor.redefinirSenha()`, `Gestor.desativarUsuario()`, `Gestor.reativarUsuario()`, `Usuario.ativo` e `Usuario.redefinirSenhaTemporaria()` |
+| RF-14 (gerenciar usuários) | `cadastrarUsuario()`, `redefinirSenha()`, `desativarUsuario()` e `reativarUsuario()` em Gestor e Administrador, `Usuario.ativo` e `Usuario.redefinirSenhaTemporaria()` |
+| RN-12 (quem gerencia cada conta) | `Gestor.PERFIS_GERENCIADOS`, `Administrador.PERFIS_GERENCIADOS` e `podeGerenciar()` |
+| RF-16 (log de atividades) | classe `RegistroLog`, enumeração `AcaoLog`, `Administrador.consultarLogs()` e `Administrador.DIAS_MAXIMOS_CONSULTA` |
+| RNF-07 (integridade do log) | `RegistroLog` sem métodos de alteração |
 | RF-15 (alterar a própria senha) | `Usuario.trocarSenha()`, `Usuario.deveTrocarSenha` e `Usuario.SENHA_MINIMA` |
 | RF-05 (bolsas perto de vencer) | `Estoque.DIAS_ALERTA_VENCIMENTO` e `Estoque.listarProximasDoVencimento()` |
 | RF-06 (alerta de estoque) | `Estoque.LIMITE_CRITICO` e `estaCritico()` |
@@ -336,4 +382,5 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 - [ ] Losango vazado em Estoque (agregação) e preenchido em Triagem (composição)
 - [ ] Triângulo vazado nas setas de herança, apontando para a superclasse
 - [ ] Usuario e ProfissionalDeSaude marcadas como `<<abstract>>`
+- [ ] Administrador ligado a Usuario (não a Gestor)
 - [ ] Nomes de classe no singular e sem acentos

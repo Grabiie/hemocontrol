@@ -16,7 +16,8 @@ O objetivo é substituir controles manuais (papel e planilhas), reduzindo perdas
 
 - **Recepcionista:** cadastra doadores.
 - **Profissional de saúde (médico e enfermeiro):** realiza triagem e registra doações.
-- **Gestor:** consulta estoque e gera relatórios.
+- **Gestor:** consulta estoque, atende solicitações, gera relatórios e gerencia as contas de recepcionista, médico e enfermeiro.
+- **Administrador (responsável técnico):** gerencia todas as contas, inclusive as de gestor, e consulta o log de atividades. Não usa as funções do banco de sangue; só consulta o histórico de doações.
 - **Hospital solicitante (sistema externo):** solicita bolsas.
 
 ### Funcionalidades planejadas
@@ -67,9 +68,25 @@ Todas usam a senha `hemo123`. Cada perfil só acessa as funções que o diagrama
 | `recepcao` | Recepcionista | Cadastrar, buscar e editar doadores |
 | `medico` | Médico | Realizar triagem e registrar inaptidão temporária |
 | `enfermeiro` | Enfermeiro | Realizar triagem e registrar doação (inclusive coleta interrompida) |
-| `gestor` | Gestor | Consultar estoque, registrar e atender solicitações, descartar bolsas vencidas, gerar relatório mensal e gerenciar usuários |
+| `gestor` | Gestor | Consultar estoque, registrar e atender solicitações, descartar bolsas vencidas, gerar relatório mensal e gerenciar recepcionistas, médicos e enfermeiros |
+| `admin` | Administrador | Gerenciar todas as contas, inclusive as de gestor, e consultar o log de atividades |
 
 As contas também são criadas automaticamente na primeira vez que o servidor sobe.
+
+### Contas de administrador (RN-12)
+
+Nenhuma conta cria ou altera um administrador pela tela. Isso é feito no terminal do servidor, pelo responsável técnico, e também fica no log de atividades:
+
+```bash
+npm run admin -- criar <login> "<nome>" <cpf>   # cria um administrador com senha temporária
+npm run admin -- senha <login>                  # gera senha temporária para qualquer conta
+npm run admin -- desativar <login>              # desativa qualquer conta
+npm run admin -- reativar <login>               # reativa qualquer conta
+```
+
+### Log de atividades (RF-16 e RNF-07)
+
+O administrador vê, na tela, o que cada usuário fez: entradas e saídas, logins recusados, tentativas de usar funções de outro perfil, cadastros, triagens, doações, descartes, solicitações, relatórios e toda a gestão de contas e senhas. Dá para filtrar por período, usuário e ação e exportar em CSV. Os registros não podem ser alterados nem apagados: o próprio banco recusa (gatilhos no SQLite).
 
 ### Integração com hospitais (RF-07 e RNF-05)
 
@@ -108,6 +125,8 @@ hemocontrol/
 │   ├── database.js    # criação das tabelas SQLite
 │   ├── repositorios.js# leitura e gravação no banco
 │   ├── sessoes.js     # login, sessões e permissões por perfil
+│   ├── auditoria.js   # gravação do log de atividades
+│   ├── admin.js       # comandos do responsável técnico (npm run admin)
 │   ├── seed.js        # dados de exemplo
 │   └── server.js      # API REST com Express
 ├── test/              # testes das regras de negócio
@@ -136,8 +155,10 @@ Em desenvolvimento. Implementação inicial focada no fluxo principal do banco d
 - [x] Tema claro e escuro, salvo por usuário e por navegador (RNF-06)
 - [x] Cadastro de doadores (RF-02, RN-01)
 - [x] Busca e edição de doadores (RF-13, RN-08)
-- [x] Cadastro, desativação e senha temporária de usuários pelo gestor (RF-14)
+- [x] Cadastro, desativação e senha temporária de usuários pelo gestor e pelo administrador (RF-14)
 - [x] Troca da própria senha, obrigatória no primeiro acesso (RF-15)
+- [x] Perfil Administrador, que cuida das contas de gestor (RN-12)
+- [x] Log de atividades com filtros e exportação, que não pode ser alterado (RF-16, RNF-07)
 - [x] Triagem com critérios de aptidão (RF-03, RN-02, RN-03, RN-06)
 - [x] Registro de doação e geração de bolsa, com limite de volume por peso (RF-04, RN-04, RN-05, RN-07)
 - [x] Consulta de estoque com gráfico, alerta de estoque crítico e de bolsas perto de vencer (RF-05, RF-06)

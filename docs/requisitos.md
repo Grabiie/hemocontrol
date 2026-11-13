@@ -6,7 +6,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-01
 **Nome:** Autenticar usuário
-**Descrição:** O sistema deve permitir que recepcionistas, enfermeiros, médicos e gestores acessem o sistema por meio de login e senha, liberando apenas as funcionalidades do perfil de cada um.
+**Descrição:** O sistema deve permitir que recepcionistas, enfermeiros, médicos, gestores e administradores acessem o sistema por meio de login e senha, liberando apenas as funcionalidades do perfil de cada um.
 
 ### RF-02
 **Nome:** Cadastrar doador
@@ -58,11 +58,15 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-14
 **Nome:** Gerenciar usuários
-**Descrição:** O sistema deve permitir que o gestor cadastre usuários (nome, CPF, login e perfil, além do CRM para médicos e do COREN para enfermeiros), gere uma senha temporária para qualquer outro usuário e desative ou reative contas. Login e CPF não se repetem, e o CPF é conferido antes do restante do cadastro. O gestor nunca escolhe nem conhece a senha definitiva: no cadastro e na redefinição o sistema gera uma senha temporária, que é exibida uma única vez, e o usuário é obrigado a trocá-la no próximo acesso (RF-15). Fica registrado quem gerou a senha temporária e quando. Contas não são excluídas, apenas desativadas, para que os registros feitos por elas (triagens, inaptidões, doações) continuem ligados a quem os fez; uma conta desativada não entra no sistema e perde as sessões abertas. O gestor não pode desativar a própria conta nem gerar senha temporária para si.
+**Descrição:** O sistema deve permitir que o gestor e o administrador cadastrem usuários (nome, CPF, login e perfil, além do CRM para médicos e do COREN para enfermeiros), gerem uma senha temporária para outro usuário e desativem ou reativem contas, respeitando os perfis que cada um gerencia (RN-12). Login e CPF não se repetem, e o CPF é conferido antes do restante do cadastro. Quem cadastra nunca escolhe nem conhece a senha definitiva: no cadastro e na redefinição o sistema gera uma senha temporária, que é exibida uma única vez, e o usuário é obrigado a trocá-la no próximo acesso (RF-15). Fica registrado quem gerou a senha temporária e quando. Contas não são excluídas, apenas desativadas, para que os registros feitos por elas (triagens, inaptidões, doações) continuem ligados a quem os fez; uma conta desativada não entra no sistema e perde as sessões abertas. Ninguém pode desativar a própria conta nem gerar senha temporária para si.
 
 ### RF-15
 **Nome:** Alterar a própria senha
 **Descrição:** O sistema deve permitir que qualquer usuário autenticado troque a própria senha, informando a senha atual e a nova (mínimo de 6 caracteres, diferente da atual). Enquanto estiver com uma senha temporária, o usuário só consegue acessar a troca de senha. Ao trocar, as outras sessões abertas desse usuário são encerradas.
+
+### RF-16
+**Nome:** Registrar e consultar o log de atividades
+**Descrição:** O sistema deve registrar em um log as ações relevantes, com data e hora, usuário, ação, descrição e origem (endereço IP, integração ou terminal): entradas e saídas, logins recusados, tentativas de acesso a funções de outro perfil, cadastro e alteração de doadores (só quais campos mudaram, sem os valores), triagens, inaptidões, doações, descartes, solicitações, atendimentos, relatórios e todas as ações de gestão de contas e senhas. O administrador consulta o log filtrando por período (até 90 dias por vez), usuário e ação, com paginação e exportação em planilha (CSV).
 
 ## Requisitos Não Funcionais (RNF)
 
@@ -89,6 +93,10 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 ### RNF-06
 **Nome:** Tema claro e escuro
 **Descrição:** O sistema deve oferecer tema claro e escuro. Na primeira visita, deve seguir o tema do sistema operacional; a escolha feita pelo usuário deve ficar salva no navegador e na conta do usuário, valendo em qualquer navegador em que ele entrar.
+
+### RNF-07
+**Nome:** Integridade do log
+**Descrição:** Os registros do log de atividades não podem ser alterados nem apagados por nenhum perfil, inclusive o administrador. O próprio banco de dados recusa qualquer alteração ou exclusão na tabela de log.
 
 ## Regras de Negócio (RN)
 
@@ -135,3 +143,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 ### RN-11
 **Nome:** Idade no cadastro
 **Descrição:** O cadastro de doador só aceita datas de nascimento que resultem em idade de 16 a 69 anos na data do cadastro, a faixa em que se pode doar (RN-02); datas no futuro são recusadas. Na edição, a regra vale apenas quando a data de nascimento é corrigida, para que um doador que já passou dos 69 anos continue podendo ter os outros dados atualizados.
+
+### RN-12
+**Nome:** Quem gerencia cada conta
+**Descrição:** O gestor gerencia apenas contas de recepcionista, médico e enfermeiro. Contas de gestor são gerenciadas pelo administrador, para que um gestor não consiga desativar ou assumir a conta de outro. O administrador gerencia todos os perfis, menos outros administradores; contas de administrador são criadas e recuperadas apenas pelo terminal do servidor (`npm run admin`), pelo responsável técnico, e essas ações também ficam no log (RF-16). O administrador não usa as funções do banco de sangue (cadastro, triagem, doação, estoque, solicitações e relatório); ele só consulta o histórico de doações, para conferir registros que aparecem no log.
