@@ -930,11 +930,12 @@ formHistorico.addEventListener('submit', async (e) => {
     const doadores = await resposta.json();
     if (!resposta.ok) throw new Error(doadores.erro ?? 'Erro ao buscar o doador.');
     if (doadores.length === 0) throw new Error(`Nenhum doador encontrado para "${termo}".`);
-    if (doadores.length === 1) return carregarHistorico(doadores[0].cpf);
 
-    // Mais de um: a pessoa escolhe. Nascimento, tipo e parte do CPF ajudam com nomes iguais.
-    resultado.appendChild(criar('p', 'historico-doador',
-      `${doadores.length === 10 ? 'Primeiros 10 doadores' : `${doadores.length} doadores`} encontrados. Escolha um:`));
+    // Mesmo com um só resultado, a pessoa confirma qual é. Nascimento, tipo e parte do CPF
+    // ajudam a diferenciar nomes parecidos.
+    const quantos = doadores.length === 1 ? '1 doador encontrado'
+      : `${doadores.length === 10 ? 'Primeiros 10 doadores' : `${doadores.length} doadores`} encontrados`;
+    resultado.appendChild(criar('p', 'historico-doador', `${quantos}. Selecione para ver o histórico:`));
     const lista = criar('div', 'escolha-doador');
     for (const d of doadores) {
       const botao = criar('button', 'secundario');
