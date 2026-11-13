@@ -4,8 +4,8 @@ import { AcaoLog } from './enums.js';
 import { criarConta, conferirAlvo, PERFIS_OPERACIONAIS } from './gestaoDeContas.js';
 import { lerData } from './datas.js';
 
-// Responsável técnico (TI). Não usa as telas do banco de sangue: cuida das contas,
-// inclusive as de gestor (RN-12), e consulta o registro de atividades (RF-16).
+// Responsável técnico (TI). Não usa as telas do banco de sangue: é o único que cuida
+// das contas (RN-12) e consulta o registro de atividades (RF-16).
 export class Administrador extends Usuario {
   static PERFIL = 'ADMINISTRADOR';
   // RF-16: período máximo de uma consulta de logs, para a tela continuar leve

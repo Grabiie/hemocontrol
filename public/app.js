@@ -1279,11 +1279,11 @@ function mostrarSistema(usuario) {
     return;
   }
 
-  if (usuario.perfil === 'GESTOR' || usuario.perfil === 'ADMINISTRADOR') {
+  if (usuario.perfil === 'ADMINISTRADOR') {
     document.getElementById('aviso-senha-temporaria').hidden = true;
     listarUsuarios();
+    iniciarLogs();
   }
-  if (usuario.perfil === 'ADMINISTRADOR') iniciarLogs();
   if (usuario.perfil === 'GESTOR') {
     const hoje = new Date();
     document.querySelector('#form-relatorio [name=mes]').value =
@@ -1366,9 +1366,7 @@ function preencherPerfis(perfis) {
   for (const p of perfis) select.appendChild(new Option(ROTULO_PERFIL[p], p));
   if (perfis.includes(atual)) select.value = atual;
   atualizarCampoRegistro();
-  document.getElementById('dica-rn12').textContent = usuarioAtual?.perfil === 'GESTOR'
-    ? 'Contas de gestor e de administrador são cuidadas pelo administrador do sistema (RN-12).'
-    : 'Contas de administrador são criadas pelo terminal do servidor (RN-12).';
+  document.getElementById('dica-rn12').textContent = 'Contas de administrador são criadas pelo terminal do servidor (RN-12).';
 }
 
 async function listarUsuarios() {

@@ -82,10 +82,10 @@ app.put('/api/minha-senha', (req, res) => {
   res.json({ ...req.usuario.toJSON(), tema: repo.buscarTemaUsuario(req.usuario.id) });
 });
 
-// RF-14 — Gerenciar usuários (Gestor e Administrador; RN-12 define quem cuida de quais perfis)
+// RF-14 — Gerenciar usuários (só o Administrador; RN-12)
 const descreverConta = (u) => `${u.getNome()} (${u.login}, ${u.perfil.toLowerCase()})`;
 
-app.get('/api/usuarios', exigir(Gestor, Administrador), (req, res) => {
+app.get('/api/usuarios', exigir(Administrador), (req, res) => {
   const responsavel = req.usuario;
   res.json({
     perfisGerenciados: responsavel.constructor.PERFIS_GERENCIADOS.map((Classe) => Classe.PERFIL),
@@ -97,13 +97,13 @@ app.get('/api/usuarios', exigir(Gestor, Administrador), (req, res) => {
 });
 
 // Confere o CPF assim que é digitado, antes de preencher o resto do cadastro
-app.get('/api/usuarios/cpf/:cpf', exigir(Gestor, Administrador), (req, res) => {
+app.get('/api/usuarios/cpf/:cpf', exigir(Administrador), (req, res) => {
   const usuario = repo.buscarUsuarioPorCpf(req.params.cpf);
   res.json(usuario ? { cadastrado: true, nome: usuario.getNome(), login: usuario.login } : { cadastrado: false });
 });
 
 // Cadastra com senha temporária: quem cadastra a entrega e o usuário cria a definitiva no primeiro acesso
-app.post('/api/usuarios', exigir(Gestor, Administrador), (req, res) => {
+app.post('/api/usuarios', exigir(Administrador), (req, res) => {
   const novo = req.usuario.cadastrarUsuario(req.body ?? {});
   const senhaTemporaria = novo.redefinirSenhaTemporaria();
   const salvo = repo.salvarUsuario(novo);
@@ -118,7 +118,7 @@ function buscarConta(req, res) {
   return usuario;
 }
 
-app.put('/api/usuarios/:id/senha', exigir(Gestor, Administrador), (req, res) => {
+app.put('/api/usuarios/:id/senha', exigir(Administrador), (req, res) => {
   const usuario = buscarConta(req, res);
   if (!usuario) return;
   const senhaTemporaria = req.usuario.redefinirSenha(usuario);
@@ -129,7 +129,7 @@ app.put('/api/usuarios/:id/senha', exigir(Gestor, Administrador), (req, res) => 
 });
 
 // Desativar no lugar de excluir: o histórico continua ligado a quem fez cada registro
-app.put('/api/usuarios/:id/situacao', exigir(Gestor, Administrador), (req, res) => {
+app.put('/api/usuarios/:id/situacao', exigir(Administrador), (req, res) => {
   const usuario = buscarConta(req, res);
   if (!usuario) return;
   if (req.body?.ativo) req.usuario.reativarUsuario(usuario);
@@ -182,16 +182,16 @@ app.post('/api/doadores', exigir(Recepcionista), (req, res) => {
   res.status(201).json(salvo);
 });
 
-// RF-13 — Buscar doadores por nome ou CPF (Recepcionista)
-app.get('/api/doadores', exigir(Recepcionista), (req, res) => {
+// RF-13 — Buscar doadores por nome ou CPF (Recepcionista e Gestor)
+app.get('/api/doadores', exigir(Recepcionista, Gestor), (req, res) => {
   res.json(repo.buscarDoadores(req.query.busca).map((d) => ({
     ...d.toJSON(),
     possuiDoacoes: repo.datasDoacoesDoDoador(d.id).length > 0,
   })));
 });
 
-// RF-13 — Editar dados cadastrais do doador (Recepcionista)
-app.put('/api/doadores/:id', exigir(Recepcionista), (req, res) => {
+// RF-13 — Editar dados cadastrais do doador (Recepcionista e Gestor)
+app.put('/api/doadores/:id', exigir(Recepcionista, Gestor), (req, res) => {
   const atual = repo.buscarDoadorPorId(Number(req.params.id));
   if (!atual) return res.status(404).json({ erro: 'Doador não encontrado.' });
 
