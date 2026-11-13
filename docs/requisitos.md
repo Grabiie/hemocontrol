@@ -50,7 +50,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-12
 **Nome:** Consultar histórico de doações
-**Descrição:** O sistema deve permitir que recepcionistas, médicos, enfermeiros e gestores consultem, pelo CPF, o histórico de doações de um doador, com data, volume, código da bolsa e situação de cada doação, além da data a partir da qual o doador pode doar novamente.
+**Descrição:** O sistema deve permitir que recepcionistas, médicos, enfermeiros e gestores consultem, pelo nome ou pelo CPF, o histórico de doações de um doador, com data, volume, código da bolsa e situação de cada doação, além da data a partir da qual o doador pode doar novamente.
 
 ### RF-13
 **Nome:** Buscar e editar doador

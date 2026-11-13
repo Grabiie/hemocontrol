@@ -215,6 +215,14 @@ app.get('/api/doadores/:cpf', exigir(Recepcionista, ProfissionalDeSaude), (req, 
   res.json(doador);
 });
 
+// RF-12 — busca por nome (ou parte do CPF) para escolher de quem ver o histórico.
+// Devolve só o necessário para diferenciar homônimos: nome, nascimento, tipo e CPF.
+app.get('/api/historico/doadores', exigir(Recepcionista, ProfissionalDeSaude, Gestor), (req, res) => {
+  res.json(repo.buscarDoadores(req.query.busca, 10).map((d) => ({
+    nome: d.nome, cpf: d.cpf, dataNascimento: d.toJSON().dataNascimento, tipoSanguineo: d.tipoSanguineo,
+  })));
+});
+
 // RF-12 — Consultar histórico de doações (perfis do banco de sangue; o Administrador não precisa dos dados dos doadores)
 app.get('/api/doadores/:cpf/historico', exigir(Recepcionista, ProfissionalDeSaude, Gestor), (req, res) => {
   const doador = repo.buscarDoadorPorCpf(req.params.cpf);

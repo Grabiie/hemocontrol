@@ -905,13 +905,55 @@ document.getElementById('botao-cancelar-edicao').addEventListener('click', () =>
 
 // ---------- Histórico de doações (RF-12) ----------
 
-document.getElementById('form-historico').addEventListener('submit', async (e) => {
+const formHistorico = document.getElementById('form-historico');
+
+// Nome ou CPF no mesmo campo: se a pessoa digita só números, o campo ganha a máscara de CPF
+formHistorico.busca.addEventListener('input', (e) => {
+  const campo = e.target;
+  if (/^[\d.\-\s]+$/.test(campo.value)) campo.value = formatarCpf(campo.value);
+});
+
+formHistorico.addEventListener('submit', async (e) => {
   e.preventDefault();
   const resultado = document.getElementById('resultado-historico');
   resultado.innerHTML = '';
   mostrar('msg-historico', '', '');
+  const termo = e.target.busca.value.trim();
+  const digitos = termo.replace(/\D/g, '');
 
-  const cpf = e.target.cpf.value.replace(/\D/g, '');
+  // CPF completo: vai direto ao histórico
+  if (/^[\d.\-\s]+$/.test(termo) && digitos.length === 11) return carregarHistorico(digitos);
+
+  try {
+    const resposta = await fetch(`/api/historico/doadores?${new URLSearchParams({ busca: termo })}`);
+    if (resposta.status === 401) return mostrarLogin();
+    const doadores = await resposta.json();
+    if (!resposta.ok) throw new Error(doadores.erro ?? 'Erro ao buscar o doador.');
+    if (doadores.length === 0) throw new Error(`Nenhum doador encontrado para "${termo}".`);
+    if (doadores.length === 1) return carregarHistorico(doadores[0].cpf);
+
+    // Mais de um: a pessoa escolhe. Nascimento, tipo e parte do CPF ajudam com nomes iguais.
+    resultado.appendChild(criar('p', 'historico-doador',
+      `${doadores.length === 10 ? 'Primeiros 10 doadores' : `${doadores.length} doadores`} encontrados. Escolha um:`));
+    const lista = criar('div', 'escolha-doador');
+    for (const d of doadores) {
+      const botao = criar('button', 'secundario');
+      botao.type = 'button';
+      botao.append(criar('strong', null, d.nome),
+        criar('span', null, `${formatarData(`${d.dataNascimento}T12:00:00`)} · ${TIPOS[d.tipoSanguineo]} · ***.${d.cpf.slice(3, 6)}.${d.cpf.slice(6, 9)}-**`));
+      botao.addEventListener('click', () => carregarHistorico(d.cpf));
+      lista.appendChild(botao);
+    }
+    resultado.appendChild(lista);
+  } catch (erro) {
+    mostrar('msg-historico', erro.message, 'erro');
+  }
+});
+
+async function carregarHistorico(cpf) {
+  const resultado = document.getElementById('resultado-historico');
+  resultado.innerHTML = '';
+  mostrar('msg-historico', '', '');
   try {
     const resposta = await fetch(`/api/doadores/${cpf}/historico`);
     const dados = await resposta.json();
@@ -973,7 +1015,7 @@ document.getElementById('form-historico').addEventListener('submit', async (e) =
   } catch (erro) {
     mostrar('msg-historico', erro.message, 'erro');
   }
-});
+}
 
 // ---------- Rastrear doação ou bolsa (RF-17, Gestor) ----------
 

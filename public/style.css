@@ -431,6 +431,11 @@ button.secundario { background: var(--superficie); color: var(--vermelho); borde
 .relatorio .observacao { grid-column: 1 / -1; font-size: 0.75rem; color: var(--suave); margin: 0; }
 
 .historico-doador { margin: 12px 0 8px; font-size: 0.9rem; }
+/* RF-12: lista para escolher o doador quando a busca por nome acha mais de um */
+.escolha-doador { display: flex; flex-direction: column; gap: 6px; }
+.escolha-doador button { margin: 0; padding: 8px 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
+.escolha-doador button strong { color: var(--texto); }
+.escolha-doador button span { font-size: 0.8rem; font-weight: 400; color: var(--suave); }
 .historico { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .historico th, .historico td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--borda); }
 .historico th { color: var(--suave); font-weight: 600; }
