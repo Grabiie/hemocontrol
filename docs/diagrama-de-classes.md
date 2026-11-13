@@ -52,8 +52,10 @@ Usuario
 - cpf: String
 - login: String
 - senhaHash: String
++ SENHA_MINIMA: int = 6 {readOnly}
 -----------------------------------
 + autenticar(login: String, senha: String): boolean
++ alterarSenha(novaSenha: String): void
 + getNome(): String
 ```
 
@@ -75,6 +77,8 @@ Gestor
 + atenderSolicitacao(solicitacao: Solicitacao, estoque: Estoque, aceitaParcial: boolean): boolean
 + descartarBolsasVencidas(estoque: Estoque): int
 + gerarRelatorioMensal(mes: int, ano: int): RelatorioMensal
++ cadastrarUsuario(nome: String, cpf: String, login: String, perfil: String, senha: String, registroProfissional: String): Usuario
++ redefinirSenha(usuario: Usuario, novaSenha: String): void
 ```
 
 ```
@@ -303,6 +307,7 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 | RN-09 (triagem do dia) | `Triagem.ehDoDia()` |
 | RN-10 (triagem repetida e limite diário) | `Triagem.LIMITE_DIARIO`, `Triagem.repeteMedicaoDe()` e `MedicaoClinica.equals()` |
 | RF-13 e RN-08 (editar doador) | `Recepcionista.editarDoador()` |
+| RF-14 (gerenciar usuários) | `Gestor.cadastrarUsuario()`, `Gestor.redefinirSenha()`, `Usuario.alterarSenha()` e `Usuario.SENHA_MINIMA` |
 | RF-05 (bolsas perto de vencer) | `Estoque.DIAS_ALERTA_VENCIMENTO` e `Estoque.listarProximasDoVencimento()` |
 | RF-06 (alerta de estoque) | `Estoque.LIMITE_CRITICO` e `estaCritico()` |
 | RF-07 (solicitação manual ou integrada) | `Solicitacao.origemManual` |

@@ -67,7 +67,7 @@ Todas usam a senha `hemo123`. Cada perfil só acessa as funções que o diagrama
 | `recepcao` | Recepcionista | Cadastrar, buscar e editar doadores |
 | `medico` | Médico | Realizar triagem e registrar inaptidão temporária |
 | `enfermeiro` | Enfermeiro | Realizar triagem e registrar doação (inclusive coleta interrompida) |
-| `gestor` | Gestor | Consultar estoque, registrar e atender solicitações, descartar bolsas vencidas e gerar relatório mensal |
+| `gestor` | Gestor | Consultar estoque, registrar e atender solicitações, descartar bolsas vencidas, gerar relatório mensal e gerenciar usuários |
 
 As contas também são criadas automaticamente na primeira vez que o servidor sobe.
 
@@ -136,6 +136,7 @@ Em desenvolvimento. Implementação inicial focada no fluxo principal do banco d
 - [x] Tema claro e escuro, salvo por usuário e por navegador (RNF-06)
 - [x] Cadastro de doadores (RF-02, RN-01)
 - [x] Busca e edição de doadores (RF-13, RN-08)
+- [x] Cadastro de usuários e redefinição de senha pelo gestor (RF-14)
 - [x] Triagem com critérios de aptidão (RF-03, RN-02, RN-03, RN-06)
 - [x] Registro de doação e geração de bolsa, com limite de volume por peso (RF-04, RN-04, RN-05, RN-07)
 - [x] Consulta de estoque com gráfico, alerta de estoque crítico e de bolsas perto de vencer (RF-05, RF-06)

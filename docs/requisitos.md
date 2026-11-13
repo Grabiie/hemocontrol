@@ -56,6 +56,10 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 **Nome:** Buscar e editar doador
 **Descrição:** O sistema deve permitir que o recepcionista busque doadores por parte do nome ou do CPF e corrija os dados cadastrais (nome, data de nascimento, sexo, tipo sanguíneo, telefone e consentimento do responsável). O CPF não pode ser alterado.
 
+### RF-14
+**Nome:** Gerenciar usuários
+**Descrição:** O sistema deve permitir que o gestor cadastre usuários (nome, CPF, login, perfil e senha inicial, além do CRM para médicos e do COREN para enfermeiros) e redefina a senha de qualquer usuário. O login é único, e a senha tem no mínimo 6 caracteres e é guardada apenas como hash (RNF-02). Ao redefinir uma senha, as sessões abertas daquele usuário são encerradas.
+
 ## Requisitos Não Funcionais (RNF)
 
 ### RNF-01
