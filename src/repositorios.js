@@ -1,4 +1,5 @@
 import { db, transacao } from './database.js';
+import { formatarDataISO } from './models/datas.js';
 import { Doador } from './models/Doador.js';
 import { Triagem } from './models/Triagem.js';
 import { BolsaSangue } from './models/BolsaSangue.js';
@@ -103,7 +104,7 @@ export function salvarDoador(doador) {
       .run(
         doador.nome,
         doador.cpf,
-        doador.dataNascimento.toISOString().slice(0, 10),
+        formatarDataISO(doador.dataNascimento),
         doador.sexo,
         doador.tipoSanguineo,
         doador.telefone,
@@ -130,7 +131,7 @@ export function atualizarDoador(doador) {
      WHERE id = ?`,
   ).run(
     doador.nome,
-    doador.dataNascimento.toISOString().slice(0, 10),
+    formatarDataISO(doador.dataNascimento),
     doador.sexo,
     doador.tipoSanguineo,
     doador.telefone,

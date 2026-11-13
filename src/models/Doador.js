@@ -1,8 +1,9 @@
 import { Sexo, TipoSanguineo, validarEnum } from './enums.js';
-import { diasEntre, somarDias } from './datas.js';
+import { diasEntre, somarDias, lerData, formatarDataISO } from './datas.js';
 
-// RN-02: idade mínima e limite para a primeira doação
+// RN-02: faixa de idade para doar e limite para a primeira doação
 const IDADE_MINIMA = 16;
+const IDADE_MAXIMA = 69;
 const IDADE_MAIORIDADE = 18;
 const IDADE_MAXIMA_PRIMEIRA_DOACAO = 60;
 
@@ -11,6 +12,9 @@ const INTERVALO_DIAS = { [Sexo.MASCULINO]: 60, [Sexo.FEMININO]: 90 };
 const LIMITE_ANUAL = { [Sexo.MASCULINO]: 4, [Sexo.FEMININO]: 3 };
 
 export class Doador {
+  static IDADE_MINIMA = IDADE_MINIMA;
+  static IDADE_MAXIMA = IDADE_MAXIMA;
+
   #id;
   #nome;
   #cpf;
@@ -26,7 +30,7 @@ export class Doador {
     this.#id = id;
     this.#nome = nome.trim();
     this.#cpf = String(cpf).replace(/\D/g, '');
-    this.#dataNascimento = new Date(dataNascimento);
+    this.#dataNascimento = lerData(dataNascimento);
     this.#sexo = validarEnum(Sexo, sexo, 'sexo');
     this.#tipoSanguineo = validarEnum(TipoSanguineo, tipoSanguineo, 'tipo sanguíneo');
     // Guarda só os dígitos: 10 (fixo) ou 11 (celular), com DDD
@@ -34,6 +38,7 @@ export class Doador {
     this.#consentimentoResponsavel = Boolean(consentimentoResponsavel);
 
     if (Number.isNaN(this.#dataNascimento.getTime())) throw new Error('Data de nascimento inválida.');
+    if (id === null && this.#dataNascimento > new Date()) throw new Error('A data de nascimento não pode estar no futuro.');
     if (!this.validarCpf()) throw new Error('CPF inválido.');
     // Só valida no cadastro (id nulo), para não quebrar registros antigos já salvos no banco
     if (id === null && this.#telefone && ![10, 11].includes(this.#telefone.length)) {
@@ -65,6 +70,12 @@ export class Doador {
     return digito(9) === Number(cpf[9]) && digito(10) === Number(cpf[10]);
   }
 
+  // RN-11: só se cadastra quem está na faixa de idade em que pode doar
+  estaNaFaixaDeIdade(dataReferencia = new Date()) {
+    const idade = this.calcularIdade(dataReferencia);
+    return idade >= IDADE_MINIMA && idade <= IDADE_MAXIMA;
+  }
+
   calcularIdade(dataReferencia = new Date()) {
     const nasc = this.#dataNascimento;
     let idade = dataReferencia.getFullYear() - nasc.getFullYear();
@@ -82,6 +93,8 @@ export class Doador {
 
     if (idade < IDADE_MINIMA) {
       motivos.push(`Idade abaixo do mínimo de ${IDADE_MINIMA} anos (RN-02).`);
+    } else if (idade > IDADE_MAXIMA) {
+      motivos.push(`Idade acima do máximo de ${IDADE_MAXIMA} anos para doar (RN-02).`);
     } else if (idade < IDADE_MAIORIDADE && !this.#consentimentoResponsavel) {
       motivos.push('Menor de 18 anos sem consentimento do responsável (RN-02).');
     }
@@ -137,7 +150,7 @@ export class Doador {
       id: this.#id,
       nome: this.#nome,
       cpf: this.#cpf,
-      dataNascimento: this.#dataNascimento.toISOString().slice(0, 10),
+      dataNascimento: formatarDataISO(this.#dataNascimento),
       sexo: this.#sexo,
       tipoSanguineo: this.#tipoSanguineo,
       telefone: this.#telefone,

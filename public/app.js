@@ -89,6 +89,53 @@ for (const id of ['form-doador', 'form-editar-doador']) {
   form.addEventListener('reset', () => setTimeout(() => atualizarConsentimento(form)));
 }
 
+// RN-11: o cadastro só aceita doadores de 16 a 69 anos (a faixa em que se pode doar)
+const IDADE_MINIMA = 16;
+const IDADE_MAXIMA = 69;
+
+function dataISO(data) {
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+}
+
+// Limites do calendário: quem faz 16 hoje até quem completa 70 amanhã
+function limitarCalendarioNascimento(campo) {
+  const hoje = new Date();
+  const max = new Date(hoje.getFullYear() - IDADE_MINIMA, hoje.getMonth(), hoje.getDate());
+  const min = new Date(hoje.getFullYear() - IDADE_MAXIMA - 1, hoje.getMonth(), hoje.getDate() + 1);
+  campo.min = dataISO(min);
+  campo.max = dataISO(max);
+}
+
+function conferirNascimento(campo, dica, obrigatorio = true) {
+  const idade = idadeHoje(campo.value);
+  let erro = '';
+  if (obrigatorio && idade !== null) {
+    if (campo.value > dataISO(new Date())) erro = 'A data de nascimento não pode estar no futuro.';
+    else if (idade < IDADE_MINIMA || idade > IDADE_MAXIMA) {
+      erro = `Pela data informada o doador tem ${idade} anos; o cadastro aceita de ${IDADE_MINIMA} a ${IDADE_MAXIMA} anos.`;
+    }
+  }
+  campo.setCustomValidity(erro);
+  if (dica) {
+    dica.textContent = erro || `O doador precisa ter de ${IDADE_MINIMA} a ${IDADE_MAXIMA} anos.`;
+    dica.className = `dica-campo ${erro ? 'erro' : ''}`;
+  }
+}
+
+{
+  const form = document.getElementById('form-doador');
+  const dica = document.getElementById('dica-nascimento-doador');
+  limitarCalendarioNascimento(form.dataNascimento);
+  form.dataNascimento.addEventListener('input', () => conferirNascimento(form.dataNascimento, dica));
+  form.addEventListener('reset', () => setTimeout(() => conferirNascimento(form.dataNascimento, dica)));
+}
+{
+  // Na edição, a trava só vale se a data for alterada (quem já é doador pode ter passado dos 69)
+  const form = document.getElementById('form-editar-doador');
+  form.dataNascimento.addEventListener('input', () =>
+    conferirNascimento(form.dataNascimento, null, form.dataNascimento.value !== doadorEmEdicao?.dataNascimento));
+}
+
 // Consulta o CPF assim que os 11 dígitos são digitados e só então libera os demais campos
 function conferirCpfAoDigitar({ form, campos, status, mensagemInicial, existe, naoExiste, url = (cpf) => `/api/doadores/${cpf}` }) {
   const campoCpf = form.cpf;
@@ -745,6 +792,7 @@ function abrirEdicao(d) {
   form.nome.value = d.nome;
   form.cpfExibicao.value = formatarCpf(d.cpf);
   form.dataNascimento.value = d.dataNascimento;
+  form.dataNascimento.setCustomValidity('');
   form.sexo.value = d.sexo;
   form.tipoSanguineo.value = d.tipoSanguineo;
   form.telefone.value = formatarTelefone(d.telefone ?? '');

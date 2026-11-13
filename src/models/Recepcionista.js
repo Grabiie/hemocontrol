@@ -9,6 +9,17 @@ export class Recepcionista extends Usuario {
   cadastrarDoador(doador) {
     if (!(doador instanceof Doador)) throw new Error('Informe os dados do doador.');
     if (!doador.validarCpf()) throw new Error('CPF inválido (RN-01).');
+    Recepcionista.#conferirIdade(doador);
+  }
+
+  // RN-11: o cadastro só aceita quem tem de 16 a 69 anos, a faixa em que se pode doar
+  static #conferirIdade(doador) {
+    if (!doador.estaNaFaixaDeIdade()) {
+      throw new Error(
+        `O doador precisa ter de ${Doador.IDADE_MINIMA} a ${Doador.IDADE_MAXIMA} anos; ` +
+        `pela data de nascimento informada ele tem ${doador.calcularIdade()} (RN-11).`,
+      );
+    }
   }
 
   // RF-13: corrige os dados cadastrais e devolve o doador atualizado.
@@ -29,7 +40,7 @@ export class Recepcionista extends Usuario {
       throw new Error('Telefone inválido: informe o DDD e o número, com 10 ou 11 dígitos.');
     }
 
-    return new Doador({
+    const atualizado = new Doador({
       id: atual.id,
       cpf: atual.cpf,
       nome: novosDados.nome ?? atual.nome,
@@ -39,5 +50,12 @@ export class Recepcionista extends Usuario {
       telefone,
       consentimentoResponsavel: novosDados.consentimentoResponsavel ?? atual.consentimentoResponsavel,
     });
+    // RN-11 só vale quando a data de nascimento for corrigida: quem já está cadastrado
+    // pode passar dos 69 anos e continuar tendo os outros dados atualizados
+    if (atualizado.dataNascimento.getTime() !== atual.dataNascimento.getTime()) {
+      if (atualizado.dataNascimento > new Date()) throw new Error('A data de nascimento não pode estar no futuro.');
+      Recepcionista.#conferirIdade(atualizado);
+    }
+    return atualizado;
   }
 }
