@@ -31,6 +31,8 @@ function linhaParaUsuario(linha) {
     cpf: linha.cpf,
     login: linha.login,
     senhaHash: linha.senha_hash,
+    ativo: linha.ativo !== 0,
+    deveTrocarSenha: linha.deve_trocar_senha === 1,
     crm: linha.registro_profissional,
     coren: linha.registro_profissional,
   });
@@ -46,30 +48,60 @@ export function buscarUsuarioPorId(id) {
   return linha ? linhaParaUsuario(linha) : null;
 }
 
-// RF-14: lista as contas do sistema (sem o hash da senha)
+// RF-14: lista as contas do sistema (sem o hash da senha), com a situação e
+// o registro da última senha temporária gerada pelo gestor
 export function listarUsuarios() {
   return db
-    .prepare('SELECT id, nome, cpf, login, perfil, registro_profissional FROM usuario ORDER BY nome COLLATE NOCASE')
+    .prepare(
+      `SELECT u.id, u.nome, u.cpf, u.login, u.perfil, u.registro_profissional, u.ativo, u.deve_trocar_senha,
+              u.senha_redefinida_em, g.nome AS redefinida_por
+       FROM usuario u LEFT JOIN usuario g ON g.id = u.senha_redefinida_por
+       ORDER BY u.ativo DESC, u.nome COLLATE NOCASE`,
+    )
     .all()
-    .map((l) => ({ id: l.id, nome: l.nome, cpf: l.cpf, login: l.login, perfil: l.perfil, registroProfissional: l.registro_profissional }));
+    .map((l) => ({
+      id: l.id, nome: l.nome, cpf: l.cpf, login: l.login, perfil: l.perfil,
+      registroProfissional: l.registro_profissional,
+      ativo: l.ativo !== 0,
+      deveTrocarSenha: l.deve_trocar_senha === 1,
+      senhaRedefinidaEm: l.senha_redefinida_em,
+      senhaRedefinidaPor: l.redefinida_por,
+    }));
 }
 
-// RF-14: grava um usuário novo; o login é único (UNIQUE na tabela)
+export function buscarUsuarioPorCpf(cpf) {
+  const linha = db.prepare('SELECT * FROM usuario WHERE cpf = ?').get(String(cpf ?? '').replace(/\D/g, ''));
+  return linha ? linhaParaUsuario(linha) : null;
+}
+
+// RF-14: grava um usuário novo; login e CPF não podem se repetir
 export function salvarUsuario(usuario) {
   if (buscarUsuarioPorLogin(usuario.login)) throw new Error(`O login "${usuario.login}" já está em uso.`);
+  const mesmoCpf = buscarUsuarioPorCpf(usuario.cpf);
+  if (mesmoCpf) throw new Error(`Este CPF já pertence ao usuário ${mesmoCpf.getNome()} (${mesmoCpf.login}).`);
   const { lastInsertRowid } = db
     .prepare(
-      `INSERT INTO usuario (nome, cpf, login, senha_hash, perfil, registro_profissional)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO usuario (nome, cpf, login, senha_hash, perfil, registro_profissional, deve_trocar_senha)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(usuario.getNome(), usuario.cpf, usuario.login, usuario.senhaHash, usuario.perfil,
-      usuario.crm ?? usuario.coren ?? null);
+      usuario.crm ?? usuario.coren ?? null, usuario.precisaTrocarSenha() ? 1 : 0);
   return buscarUsuarioPorId(Number(lastInsertRowid));
 }
 
-// RF-14: grava a nova senha (só o hash, RNF-02)
-export function atualizarSenha(usuario) {
-  db.prepare('UPDATE usuario SET senha_hash = ? WHERE id = ?').run(usuario.senhaHash, usuario.id);
+// RF-14 e RF-15: grava a senha (só o hash, RNF-02). Quando quem redefiniu foi o gestor,
+// guarda também quando e por quem, para ficar registrado.
+export function atualizarSenha(usuario, gestorId = null) {
+  db.prepare('UPDATE usuario SET senha_hash = ?, deve_trocar_senha = ? WHERE id = ?')
+    .run(usuario.senhaHash, usuario.precisaTrocarSenha() ? 1 : 0, usuario.id);
+  if (gestorId !== null) {
+    db.prepare('UPDATE usuario SET senha_redefinida_em = ?, senha_redefinida_por = ? WHERE id = ?')
+      .run(new Date().toISOString(), gestorId, usuario.id);
+  }
+}
+
+export function atualizarSituacaoUsuario(usuario) {
+  db.prepare('UPDATE usuario SET ativo = ? WHERE id = ?').run(usuario.estaAtivo() ? 1 : 0, usuario.id);
 }
 
 // RNF-06: preferência de tema do usuário. É uma configuração da interface,

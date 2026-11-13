@@ -30,9 +30,10 @@ export class Gestor extends Usuario {
     return new RelatorioMensal({ mes, ano });
   }
 
-  // RF-14: cria a conta de um novo usuário do sistema, já com a senha em hash.
-  // A unicidade do login é conferida pelo repositório ao salvar.
-  cadastrarUsuario({ nome, cpf, login, perfil, senha, registroProfissional }) {
+  // RF-14: cria a conta de um novo usuário. A senha inicial é temporária (redefinirSenha)
+  // e o próprio usuário cria a definitiva no primeiro acesso, então o gestor não a conhece.
+  // A unicidade do login e do CPF é conferida pelo repositório ao salvar.
+  cadastrarUsuario({ nome, cpf, login, perfil, registroProfissional }) {
     const Classe = { RECEPCIONISTA: Recepcionista, MEDICO: Medico, ENFERMEIRO: Enfermeiro, GESTOR: Gestor }[perfil];
     if (!Classe) throw new Error('Escolha o perfil do usuário.');
     if (!String(nome ?? '').trim()) throw new Error('O nome do usuário é obrigatório.');
@@ -45,17 +46,33 @@ export class Gestor extends Usuario {
     if (Classe === Medico && !registro) throw new Error('Informe o CRM do médico.');
     if (Classe === Enfermeiro && !registro) throw new Error('Informe o COREN do enfermeiro.');
 
-    const usuario = new Classe({
+    return new Classe({
       nome: String(nome).trim(), cpf, login: loginLimpo, senhaHash: null,
       crm: registro || undefined, coren: registro || undefined,
     });
-    usuario.alterarSenha(senha);
-    return usuario;
   }
 
-  // RF-14: o gestor define uma nova senha para qualquer usuário (por exemplo, quando ele esquece a dele)
-  redefinirSenha(usuario, novaSenha) {
+  // RF-14: gera uma senha temporária para o usuário (por exemplo, quando ele esquece a dele).
+  // O gestor não escolhe a senha: o usuário cria a própria no próximo acesso (RF-15).
+  redefinirSenha(usuario) {
+    this.#conferirOutroUsuario(usuario, 'redefinir a própria senha por aqui; use "Alterar minha senha"');
+    return usuario.redefinirSenhaTemporaria();
+  }
+
+  // RF-14: em vez de excluir, desativa. A conta deixa de entrar no sistema, mas os registros
+  // feitos por ela (inaptidões, triagens, doações) continuam ligados a quem os fez.
+  desativarUsuario(usuario) {
+    this.#conferirOutroUsuario(usuario, 'desativar a própria conta');
+    usuario.desativar();
+  }
+
+  reativarUsuario(usuario) {
+    this.#conferirOutroUsuario(usuario, 'reativar a própria conta');
+    usuario.reativar();
+  }
+
+  #conferirOutroUsuario(usuario, acao) {
     if (!(usuario instanceof Usuario)) throw new Error('Usuário não encontrado.');
-    usuario.alterarSenha(novaSenha);
+    if (usuario.id !== null && usuario.id === this.id) throw new Error(`O gestor não pode ${acao}.`);
   }
 }

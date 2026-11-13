@@ -31,6 +31,9 @@ app.post('/api/login', (req, res) => {
   if (!usuario || !usuario.autenticar(login, senha)) {
     return res.status(401).json({ erro: 'Usuário ou senha inválidos.' });
   }
+  if (!usuario.estaAtivo()) {
+    return res.status(403).json({ erro: 'Esta conta está desativada. Procure o gestor.' });
+  }
   iniciarSessao(res, usuario);
   res.json({ ...usuario.toJSON(), tema: repo.buscarTemaUsuario(usuario.id) });
 });
@@ -55,23 +58,54 @@ app.put('/api/preferencias/tema', exigir(Usuario), (req, res) => {
   res.json({ tema });
 });
 
-// RF-14 — Gerenciar usuários (Gestor): listar, cadastrar e redefinir senha
+// RF-15 — Alterar a própria senha (qualquer usuário logado, inclusive com senha temporária)
+app.put('/api/minha-senha', (req, res) => {
+  if (!req.usuario) return res.status(401).json({ erro: 'Faça login para continuar.' });
+  const { senhaAtual, novaSenha } = req.body ?? {};
+  req.usuario.trocarSenha(senhaAtual, novaSenha);
+  repo.atualizarSenha(req.usuario);
+  encerrarOutrasSessoes(req.usuario.id, req);
+  res.json({ ...req.usuario.toJSON(), tema: repo.buscarTemaUsuario(req.usuario.id) });
+});
+
+// RF-14 — Gerenciar usuários (Gestor)
 app.get('/api/usuarios', exigir(Gestor), (req, res) => {
   res.json(repo.listarUsuarios());
 });
 
+// Confere o CPF assim que é digitado, antes de preencher o resto do cadastro
+app.get('/api/usuarios/cpf/:cpf', exigir(Gestor), (req, res) => {
+  const usuario = repo.buscarUsuarioPorCpf(req.params.cpf);
+  res.json(usuario ? { cadastrado: true, nome: usuario.getNome(), login: usuario.login } : { cadastrado: false });
+});
+
+// Cadastra com senha temporária: o gestor a entrega e o usuário cria a definitiva no primeiro acesso
 app.post('/api/usuarios', exigir(Gestor), (req, res) => {
-  const usuario = req.usuario.cadastrarUsuario(req.body ?? {});
-  res.status(201).json(repo.salvarUsuario(usuario));
+  const novo = req.usuario.cadastrarUsuario(req.body ?? {});
+  const senhaTemporaria = req.usuario.redefinirSenha(novo);
+  const salvo = repo.salvarUsuario(novo);
+  repo.atualizarSenha(salvo, req.usuario.id);
+  res.status(201).json({ usuario: salvo, senhaTemporaria });
 });
 
 app.put('/api/usuarios/:id/senha', exigir(Gestor), (req, res) => {
   const usuario = repo.buscarUsuarioPorId(Number(req.params.id));
   if (!usuario) return res.status(404).json({ erro: 'Usuário não encontrado.' });
-  req.usuario.redefinirSenha(usuario, req.body?.senha);
-  repo.atualizarSenha(usuario);
+  const senhaTemporaria = req.usuario.redefinirSenha(usuario);
+  repo.atualizarSenha(usuario, req.usuario.id);
   encerrarOutrasSessoes(usuario.id, req);
-  res.status(204).end();
+  res.json({ senhaTemporaria });
+});
+
+// Desativar no lugar de excluir: o histórico continua ligado a quem fez cada registro
+app.put('/api/usuarios/:id/situacao', exigir(Gestor), (req, res) => {
+  const usuario = repo.buscarUsuarioPorId(Number(req.params.id));
+  if (!usuario) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+  if (req.body?.ativo) req.usuario.reativarUsuario(usuario);
+  else req.usuario.desativarUsuario(usuario);
+  repo.atualizarSituacaoUsuario(usuario);
+  if (!usuario.estaAtivo()) encerrarOutrasSessoes(usuario.id, req);
+  res.json({ ativo: usuario.estaAtivo() });
 });
 
 // RF-02 — Cadastrar doador (Recepcionista)

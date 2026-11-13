@@ -43,6 +43,11 @@ export function carregarUsuario(req, res, next) {
 
   if (sessao && sessao.expiraEm > Date.now()) {
     req.usuario = buscarUsuarioPorId(sessao.usuarioId);
+    // RF-14: conta desativada perde o acesso na hora
+    if (req.usuario && !req.usuario.estaAtivo()) {
+      sessoes.delete(token);
+      req.usuario = null;
+    }
   } else {
     if (sessao) sessoes.delete(token);
     req.usuario = null;
@@ -56,6 +61,10 @@ export function exigir(...classesPermitidas) {
   return (req, res, next) => {
     if (!req.usuario) {
       return res.status(401).json({ erro: 'Faça login para continuar.' });
+    }
+    // RF-15: com senha temporária, o usuário só pode trocá-la antes de usar o sistema
+    if (req.usuario.precisaTrocarSenha()) {
+      return res.status(403).json({ erro: 'Crie uma senha nova antes de continuar.', trocarSenha: true });
     }
     if (!classesPermitidas.some((Classe) => req.usuario instanceof Classe)) {
       return res.status(403).json({ erro: 'Seu perfil não tem permissão para esta ação.' });

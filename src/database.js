@@ -120,6 +120,17 @@ const colunasUsuario = db.prepare('PRAGMA table_info(usuario)').all().map((c) =>
 if (!colunasUsuario.includes('tema')) {
   db.exec('ALTER TABLE usuario ADD COLUMN tema TEXT');
 }
+// RF-14 e RF-15: conta ativa, senha temporária pendente e registro de quem redefiniu a senha
+if (!colunasUsuario.includes('ativo')) {
+  db.exec('ALTER TABLE usuario ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1');
+}
+if (!colunasUsuario.includes('deve_trocar_senha')) {
+  db.exec('ALTER TABLE usuario ADD COLUMN deve_trocar_senha INTEGER NOT NULL DEFAULT 0');
+}
+if (!colunasUsuario.includes('senha_redefinida_em')) {
+  db.exec('ALTER TABLE usuario ADD COLUMN senha_redefinida_em TEXT');
+  db.exec('ALTER TABLE usuario ADD COLUMN senha_redefinida_por INTEGER REFERENCES usuario(id)');
+}
 
 const colunasBolsa = db.prepare('PRAGMA table_info(bolsa_sangue)').all().map((c) => c.name);
 if (!colunasBolsa.includes('data_descarte')) {
