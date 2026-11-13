@@ -115,9 +115,12 @@ Doador
 - tipoSanguineo: TipoSanguineo
 - telefone: String
 - consentimentoResponsavel: boolean = false
++ IDADE_MINIMA: int = 16 {readOnly}
++ IDADE_MAXIMA: int = 69 {readOnly}
 -----------------------------------
 + validarCpf(): boolean
 + calcularIdade(dataReferencia: Date): int
++ estaNaFaixaDeIdade(dataReferencia: Date): boolean
 + listarImpedimentos(data: Date, datasDoacoes: List<Date>): List<String>
 + calcularProximaDataDoacao(datasDoacoes: List<Date>): Date
 + podeDoarEm(data: Date, datasDoacoes: List<Date>): boolean
@@ -290,7 +293,8 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 | Artefato | Onde aparece no diagrama de classes |
 |---|---|
 | RN-01 (CPF único) | `Doador.cpf` e `validarCpf()` |
-| RN-02 (idade e peso) | `Doador.calcularIdade()`, `consentimentoResponsavel`, `MedicaoClinica.peso` |
+| RN-02 (idade e peso) | `Doador.IDADE_MINIMA`, `Doador.IDADE_MAXIMA`, `Doador.calcularIdade()`, `consentimentoResponsavel`, `MedicaoClinica.peso` |
+| RN-11 (idade no cadastro) | `Doador.estaNaFaixaDeIdade()` e `Recepcionista.cadastrarDoador()` |
 | RN-03 (intervalo) | `Doador.podeDoarEm()` e `Doador.calcularProximaDataDoacao()` |
 | RN-04 (validade) | `BolsaSangue.VALIDADE_DIAS`, `calcularValidade()`, `estaVencida()` |
 | RN-05 (triagem obrigatória) | associação Triagem 1 → 0..1 Doacao |

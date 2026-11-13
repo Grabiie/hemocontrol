@@ -90,7 +90,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RN-02
 **Nome:** Idade e peso mínimos
-**Descrição:** Só podem ser classificados como aptos candidatos com idade mínima de 16 anos (de 16 a 17 anos, com consentimento formal do responsável legal) e peso mínimo de 50 kg. Quem nunca doou só pode fazer a primeira doação até 60 anos, 11 meses e 29 dias.
+**Descrição:** Só podem ser classificados como aptos candidatos de 16 a 69 anos (de 16 a 17 anos, com consentimento formal do responsável legal) e com peso mínimo de 50 kg. Quem nunca doou só pode fazer a primeira doação até 60 anos, 11 meses e 29 dias.
 
 ### RN-03
 **Nome:** Intervalo entre doações
@@ -123,3 +123,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 ### RN-10
 **Nome:** Triagens repetidas
 **Descrição:** O sistema não deve registrar uma nova triagem do mesmo doador, no mesmo dia, com exatamente a mesma medição (peso, pressão e hemoglobina) da triagem anterior. Com valores diferentes a nova triagem é aceita, até o limite de 3 triagens por doador por dia.
+
+### RN-11
+**Nome:** Idade no cadastro
+**Descrição:** O cadastro de doador só aceita datas de nascimento que resultem em idade de 16 a 69 anos na data do cadastro, a faixa em que se pode doar (RN-02); datas no futuro são recusadas. Na edição, a regra vale apenas quando a data de nascimento é corrigida, para que um doador que já passou dos 69 anos continue podendo ter os outros dados atualizados.
