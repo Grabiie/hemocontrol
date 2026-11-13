@@ -46,6 +46,32 @@ export function buscarUsuarioPorId(id) {
   return linha ? linhaParaUsuario(linha) : null;
 }
 
+// RF-14: lista as contas do sistema (sem o hash da senha)
+export function listarUsuarios() {
+  return db
+    .prepare('SELECT id, nome, cpf, login, perfil, registro_profissional FROM usuario ORDER BY nome COLLATE NOCASE')
+    .all()
+    .map((l) => ({ id: l.id, nome: l.nome, cpf: l.cpf, login: l.login, perfil: l.perfil, registroProfissional: l.registro_profissional }));
+}
+
+// RF-14: grava um usuário novo; o login é único (UNIQUE na tabela)
+export function salvarUsuario(usuario) {
+  if (buscarUsuarioPorLogin(usuario.login)) throw new Error(`O login "${usuario.login}" já está em uso.`);
+  const { lastInsertRowid } = db
+    .prepare(
+      `INSERT INTO usuario (nome, cpf, login, senha_hash, perfil, registro_profissional)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(usuario.getNome(), usuario.cpf, usuario.login, usuario.senhaHash, usuario.perfil,
+      usuario.crm ?? usuario.coren ?? null);
+  return buscarUsuarioPorId(Number(lastInsertRowid));
+}
+
+// RF-14: grava a nova senha (só o hash, RNF-02)
+export function atualizarSenha(usuario) {
+  db.prepare('UPDATE usuario SET senha_hash = ? WHERE id = ?').run(usuario.senhaHash, usuario.id);
+}
+
 // RNF-06: preferência de tema do usuário. É uma configuração da interface,
 // por isso fica só no banco e não faz parte da classe Usuario do domínio.
 export function buscarTemaUsuario(id) {

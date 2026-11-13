@@ -22,6 +22,14 @@ export function iniciarSessao(res, usuario) {
   res.cookie(COOKIE, token, { httpOnly: true, sameSite: 'strict', maxAge: DURACAO_MS });
 }
 
+// RF-14: depois de uma troca de senha, derruba as outras sessões abertas daquele usuário
+export function encerrarOutrasSessoes(usuarioId, req) {
+  const atual = lerCookie(req);
+  for (const [token, sessao] of sessoes) {
+    if (sessao.usuarioId === usuarioId && token !== atual) sessoes.delete(token);
+  }
+}
+
 export function encerrarSessao(req, res) {
   const token = lerCookie(req);
   if (token) sessoes.delete(token);

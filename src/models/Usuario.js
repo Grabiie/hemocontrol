@@ -1,7 +1,10 @@
-import { conferirSenha } from './senha.js';
+import { conferirSenha, gerarHashSenha } from './senha.js';
 
 // <<abstract>> Usuario: dados de acesso comuns a todos os perfis
 export class Usuario {
+  // RF-14: tamanho mínimo da senha definida pelo gestor
+  static SENHA_MINIMA = 6;
+
   #id;
   #nome;
   #cpf;
@@ -22,12 +25,23 @@ export class Usuario {
   get id() { return this.#id; }
   get login() { return this.#login; }
   get cpf() { return this.#cpf; }
+  // Usado só pela camada de persistência para gravar o hash (RNF-02)
+  get senhaHash() { return this.#senhaHash; }
 
   // Nome do perfil exibido na interface (cada subclasse informa o seu)
   get perfil() { return this.constructor.PERFIL; }
 
   autenticar(login, senha) {
     return login === this.#login && conferirSenha(senha, this.#senhaHash);
+  }
+
+  // RF-14: troca a senha guardando apenas o hash (RNF-02)
+  alterarSenha(novaSenha) {
+    const senha = String(novaSenha ?? '');
+    if (senha.length < Usuario.SENHA_MINIMA) {
+      throw new Error(`A senha precisa ter pelo menos ${Usuario.SENHA_MINIMA} caracteres.`);
+    }
+    this.#senhaHash = gerarHashSenha(senha);
   }
 
   getNome() {

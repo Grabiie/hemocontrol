@@ -14,7 +14,7 @@ import { Triagem } from './models/Triagem.js';
 import { Solicitacao } from './models/Solicitacao.js';
 import { TipoSanguineo, ROTULO_TIPO } from './models/enums.js';
 import * as repo from './repositorios.js';
-import { carregarUsuario, exigir, iniciarSessao, encerrarSessao } from './sessoes.js';
+import { carregarUsuario, exigir, iniciarSessao, encerrarSessao, encerrarOutrasSessoes } from './sessoes.js';
 
 const app = express();
 const PORTA = process.env.PORT ?? 3000;
@@ -53,6 +53,25 @@ app.put('/api/preferencias/tema', exigir(Usuario), (req, res) => {
   }
   repo.salvarTemaUsuario(req.usuario.id, tema);
   res.json({ tema });
+});
+
+// RF-14 — Gerenciar usuários (Gestor): listar, cadastrar e redefinir senha
+app.get('/api/usuarios', exigir(Gestor), (req, res) => {
+  res.json(repo.listarUsuarios());
+});
+
+app.post('/api/usuarios', exigir(Gestor), (req, res) => {
+  const usuario = req.usuario.cadastrarUsuario(req.body ?? {});
+  res.status(201).json(repo.salvarUsuario(usuario));
+});
+
+app.put('/api/usuarios/:id/senha', exigir(Gestor), (req, res) => {
+  const usuario = repo.buscarUsuarioPorId(Number(req.params.id));
+  if (!usuario) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+  req.usuario.redefinirSenha(usuario, req.body?.senha);
+  repo.atualizarSenha(usuario);
+  encerrarOutrasSessoes(usuario.id, req);
+  res.status(204).end();
 });
 
 // RF-02 — Cadastrar doador (Recepcionista)
