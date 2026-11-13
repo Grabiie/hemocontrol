@@ -130,3 +130,36 @@ test('RN-02: acima de 69 anos o doador não pode doar', () => {
   });
   assert.match(veterano.listarImpedimentos(new Date('2026-11-12T10:00:00'), [new Date('2026-01-01')]).join(' '), /69 anos/);
 });
+
+test('RF-14: gestor cadastra usuário do perfil escolhido, com senha em hash', () => {
+  const gestor = new Gestor(dados('chefe'));
+  const medico = gestor.cadastrarUsuario({
+    nome: ' Joana Silva ', cpf: '529.982.247-25', login: 'Joana.Silva', perfil: 'MEDICO', senha: 'segura1', registroProfissional: 'CRM-SP 1',
+  });
+  assert.ok(medico instanceof Medico);
+  assert.equal(medico.login, 'joana.silva');
+  assert.equal(medico.getNome(), 'Joana Silva');
+  assert.equal(medico.crm, 'CRM-SP 1');
+  assert.ok(!medico.senhaHash.includes('segura1'));
+  assert.equal(medico.autenticar('joana.silva', 'segura1'), true);
+});
+
+test('RF-14: cadastro de usuário recusa dados inválidos', () => {
+  const gestor = new Gestor(dados('chefe2'));
+  const base = { nome: 'Ana', cpf: '529.982.247-25', login: 'ana', perfil: 'RECEPCIONISTA', senha: 'segura1' };
+  assert.throws(() => gestor.cadastrarUsuario({ ...base, perfil: 'ADMIN' }), /perfil/);
+  assert.throws(() => gestor.cadastrarUsuario({ ...base, cpf: '123.456.789-00' }), /CPF/);
+  assert.throws(() => gestor.cadastrarUsuario({ ...base, login: 'a b' }), /login/);
+  assert.throws(() => gestor.cadastrarUsuario({ ...base, senha: '123' }), /6 caracteres/);
+  assert.throws(() => gestor.cadastrarUsuario({ ...base, perfil: 'ENFERMEIRO' }), /COREN/);
+  assert.ok(gestor.cadastrarUsuario(base) instanceof Recepcionista);
+});
+
+test('RF-14: gestor redefine a senha de outro usuário', () => {
+  const gestor = new Gestor(dados('chefe3'));
+  const recep = new Recepcionista(dados('rec3'));
+  gestor.redefinirSenha(recep, 'novaSenha9');
+  assert.equal(recep.autenticar('rec3', 'segredo'), false);
+  assert.equal(recep.autenticar('rec3', 'novaSenha9'), true);
+  assert.throws(() => gestor.redefinirSenha(recep, '12'), /6 caracteres/);
+});
