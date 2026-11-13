@@ -67,7 +67,7 @@
       <button type="submit">Entrar</button>
     </form>
     <p class="mensagem" id="msg-login"></p>
-    <p class="dica">Contas de demonstração: <code>recepcao</code>, <code>medico</code>, <code>enfermeiro</code> e <code>gestor</code>, com a senha <code>hemo123</code>.</p>
+    <p class="dica">Contas de demonstração: <code>recepcao</code>, <code>medico</code>, <code>enfermeiro</code>, <code>gestor</code> e <code>admin</code>, com a senha <code>hemo123</code>.</p>
   </section>
 
   <main id="sistema" hidden>
@@ -170,7 +170,7 @@
       <p class="mensagem" id="msg-doacao"></p>
     </section>
 
-    <section class="painel" id="painel-historico" data-perfis="RECEPCIONISTA MEDICO ENFERMEIRO GESTOR">
+    <section class="painel" id="painel-historico" data-perfis="RECEPCIONISTA MEDICO ENFERMEIRO GESTOR ADMINISTRADOR">
       <h2>Histórico de doações</h2>
       <form id="form-historico">
         <label>CPF do doador <input name="cpf" required placeholder="000.000.000-00" inputmode="numeric" maxlength="14" autocomplete="off"></label>
@@ -267,7 +267,7 @@
       <p class="mensagem" id="msg-estoque"></p>
     </section>
 
-    <section class="painel largo" id="painel-usuarios" data-perfis="GESTOR">
+    <section class="painel largo" id="painel-usuarios" data-perfis="GESTOR ADMINISTRADOR">
       <h2>Usuários do sistema</h2>
       <form id="form-usuario">
         <label>CPF <input name="cpf" required placeholder="000.000.000-00" inputmode="numeric" maxlength="14" autocomplete="off"></label>
@@ -279,12 +279,8 @@
           </div>
           <div class="linha">
             <label>Perfil
-              <select name="perfil" required>
-                <option value="RECEPCIONISTA">Recepcionista</option>
-                <option value="MEDICO">Médico</option>
-                <option value="ENFERMEIRO">Enfermeiro</option>
-                <option value="GESTOR">Gestor</option>
-              </select>
+              <!-- RN-12: as opções dependem de quem está cadastrando (gestor ou administrador) -->
+              <select name="perfil" required id="perfil-novo-usuario"></select>
             </label>
             <label id="campo-registro" hidden><span id="rotulo-registro">CRM</span> <input name="registroProfissional" autocomplete="off"></label>
           </div>
@@ -294,7 +290,35 @@
       </form>
       <p class="mensagem" id="msg-usuario"></p>
       <div class="senha-temporaria" id="aviso-senha-temporaria" hidden></div>
+      <p class="dica-campo" id="dica-rn12"></p>
       <div id="lista-usuarios"></div>
+    </section>
+
+    <!-- RF-16: registro de atividades, só para o administrador -->
+    <section class="painel largo" id="painel-logs" data-perfis="ADMINISTRADOR">
+      <h2>Log de atividades</h2>
+      <form id="form-logs" class="form-linha">
+        <label class="estreito">De <input name="de" type="date" required></label>
+        <label class="estreito">Até <input name="ate" type="date" required></label>
+        <label>Usuário
+          <select name="usuarioId"><option value="">Todos</option></select>
+        </label>
+        <label>Ação
+          <select name="acao"><option value="">Todas</option></select>
+        </label>
+        <button type="submit">Filtrar</button>
+        <div class="botoes-exportar">
+          <button type="button" class="secundario" id="botao-csv-logs">Exportar planilha (CSV)</button>
+        </div>
+      </form>
+      <p class="mensagem" id="msg-logs"></p>
+      <div id="lista-logs"></div>
+      <div class="paginacao" id="paginacao-logs" hidden>
+        <button type="button" class="secundario" id="logs-anterior">Anterior</button>
+        <span id="logs-posicao"></span>
+        <button type="button" class="secundario" id="logs-proxima">Próxima</button>
+      </div>
+      <p class="dica-campo">Os registros não podem ser alterados nem apagados, nem pelo administrador (RNF-07).</p>
     </section>
   </main>
 

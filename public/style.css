@@ -454,3 +454,13 @@ button.secundario { background: var(--superficie); color: var(--vermelho); borde
   z-index: 10;
 }
 .alerta-topo.visivel { transform: translate(-50%, 0); }
+
+/* ---------- Log de atividades (RF-16) ---------- */
+#painel-logs .rolagem { max-height: 460px; }
+.tabela-logs td:first-child { white-space: nowrap; }
+.tabela-logs tr.alerta-log td { background: var(--vermelho-claro); }
+.tabela-logs tr.alerta-log td:nth-child(3) { color: var(--vermelho); font-weight: 600; }
+.paginacao { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 10px; font-size: 0.85rem; color: var(--suave); }
+.paginacao button { margin: 0; padding: 5px 14px; }
+.paginacao button:disabled { opacity: 0.4; cursor: default; filter: none; }
+.tabela-logs td:nth-child(4) { white-space: normal; min-width: 240px; }

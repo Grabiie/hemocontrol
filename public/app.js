@@ -1042,6 +1042,7 @@ const ROTULO_PERFIL = {
   MEDICO: 'Médico',
   ENFERMEIRO: 'Enfermeiro',
   GESTOR: 'Gestor',
+  ADMINISTRADOR: 'Administrador',
 };
 
 function mostrarLogin() {
@@ -1095,9 +1096,12 @@ function mostrarSistema(usuario) {
     return;
   }
 
-  if (usuario.perfil === 'GESTOR') {
+  if (usuario.perfil === 'GESTOR' || usuario.perfil === 'ADMINISTRADOR') {
     document.getElementById('aviso-senha-temporaria').hidden = true;
     listarUsuarios();
+  }
+  if (usuario.perfil === 'ADMINISTRADOR') iniciarLogs();
+  if (usuario.perfil === 'GESTOR') {
     const hoje = new Date();
     document.querySelector('#form-relatorio [name=mes]').value =
       `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
@@ -1171,12 +1175,28 @@ function botaoComConfirmacao(texto, textoConfirmar, acao, classe = 'pequeno') {
   return botao;
 }
 
+// RN-12: o select de perfil mostra só o que este responsável pode criar
+function preencherPerfis(perfis) {
+  const select = document.getElementById('perfil-novo-usuario');
+  const atual = select.value;
+  select.innerHTML = '';
+  for (const p of perfis) select.appendChild(new Option(ROTULO_PERFIL[p], p));
+  if (perfis.includes(atual)) select.value = atual;
+  atualizarCampoRegistro();
+  document.getElementById('dica-rn12').textContent = usuarioAtual?.perfil === 'GESTOR'
+    ? 'Contas de gestor e de administrador são cuidadas pelo administrador do sistema (RN-12).'
+    : 'Contas de administrador são criadas pelo terminal do servidor (RN-12).';
+}
+
 async function listarUsuarios() {
   const destino = document.getElementById('lista-usuarios');
   const resposta = await fetch('/api/usuarios');
   if (resposta.status === 401) return mostrarLogin();
-  const usuarios = await resposta.json();
-  if (!resposta.ok) return mostrar('msg-usuario', usuarios.erro ?? 'Erro ao listar usuários.', 'erro');
+  const corpoResposta = await resposta.json();
+  if (!resposta.ok) return mostrar('msg-usuario', corpoResposta.erro ?? 'Erro ao listar usuários.', 'erro');
+  const { usuarios, perfisGerenciados } = corpoResposta;
+  preencherPerfis(perfisGerenciados);
+  preencherUsuariosDoFiltro(usuarios);
 
   destino.innerHTML = '';
   const tabela = criarTabela(['Nome', 'Login', 'Perfil', 'Situação', 'Senha', ''], []);
@@ -1196,6 +1216,12 @@ async function listarUsuarios() {
     acoes.className = 'acoes-usuario';
     if (u.id === usuarioAtual?.id) {
       acoes.appendChild(criar('span', 'vazio', 'Você'));
+      continue;
+    }
+    if (!u.gerenciavel) {
+      const aviso = criar('span', 'vazio', '—');
+      aviso.title = 'Esta conta é gerenciada pelo administrador (RN-12).';
+      acoes.appendChild(aviso);
       continue;
     }
     if (u.ativo) {
@@ -1232,6 +1258,116 @@ formUsuario.addEventListener('submit', async (e) => {
   } catch (erro) {
     mostrar('msg-usuario', erro.message, 'erro');
   }
+});
+
+// ---------- Log de atividades (RF-16, Administrador) ----------
+
+const formLogs = document.getElementById('form-logs');
+let paginaLogs = 1;
+let acoesCarregadas = false;
+
+const dataInput = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// Lista de usuários do filtro, aproveitando a mesma consulta da tabela de usuários
+function preencherUsuariosDoFiltro(usuarios) {
+  const select = formLogs.usuarioId;
+  const atual = select.value;
+  select.length = 1;
+  for (const u of usuarios) select.appendChild(new Option(`${u.nome} (${u.login})`, u.id));
+  select.value = atual;
+}
+
+async function iniciarLogs() {
+  const hoje = new Date();
+  formLogs.ate.value = dataInput(hoje);
+  formLogs.de.value = dataInput(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 6));
+  formLogs.usuarioId.value = '';
+  formLogs.acao.value = '';
+  if (!acoesCarregadas) {
+    const resposta = await fetch('/api/logs/acoes');
+    if (resposta.ok) {
+      for (const { acao, rotulo } of await resposta.json()) formLogs.acao.appendChild(new Option(rotulo, acao));
+      acoesCarregadas = true;
+    }
+  }
+  paginaLogs = 1;
+  await carregarLogs();
+}
+
+const filtroLogs = () => new URLSearchParams(Object.entries(dadosDoForm(formLogs)).filter(([, v]) => v));
+
+const formatarDataHora = (iso) => new Date(iso).toLocaleString('pt-BR', {
+  day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit',
+});
+
+async function carregarLogs() {
+  const destino = document.getElementById('lista-logs');
+  const parametros = filtroLogs();
+  parametros.set('pagina', paginaLogs);
+  const resposta = await fetch(`/api/logs?${parametros}`);
+  if (resposta.status === 401) return mostrarLogin();
+  const dados = await resposta.json();
+  if (!resposta.ok) return mostrar('msg-logs', dados.erro ?? 'Erro ao consultar o log.', 'erro');
+  mostrar('msg-logs', '', '');
+
+  destino.innerHTML = '';
+  const paginacao = document.getElementById('paginacao-logs');
+  if (dados.total === 0) {
+    destino.appendChild(criar('p', 'vazio', 'Nenhuma atividade neste filtro.'));
+    paginacao.hidden = true;
+    return;
+  }
+  const tabela = criarTabela(['Data e hora', 'Usuário', 'Ação', 'Descrição', 'Origem'], []);
+  for (const r of dados.registros) {
+    const linha = tabela.tBodies[0].insertRow();
+    if (r.acao === 'ACESSO_NEGADO' || r.acao === 'LOGIN_RECUSADO') linha.className = 'alerta-log';
+    linha.insertCell().textContent = formatarDataHora(r.dataHora);
+    const quem = linha.insertCell();
+    if (r.usuario) {
+      quem.textContent = r.usuario.nome;
+      quem.title = `${r.usuario.login} · ${ROTULO_PERFIL[r.usuario.perfil] ?? r.usuario.perfil}`;
+    } else {
+      quem.appendChild(criar('span', 'vazio', 'Sistema'));
+    }
+    linha.insertCell().textContent = r.rotulo;
+    linha.insertCell().textContent = r.descricao;
+    linha.insertCell().textContent = r.origem;
+  }
+  tabela.classList.add('tabela-logs');
+  const caixa = criar('div', 'rolagem');
+  caixa.appendChild(tabela);
+  destino.appendChild(caixa);
+
+  const ultimaPagina = Math.ceil(dados.total / dados.porPagina);
+  const inicio = (dados.pagina - 1) * dados.porPagina + 1;
+  document.getElementById('logs-posicao').textContent =
+    `${inicio}–${inicio + dados.registros.length - 1} de ${dados.total}`;
+  document.getElementById('logs-anterior').disabled = dados.pagina <= 1;
+  document.getElementById('logs-proxima').disabled = dados.pagina >= ultimaPagina;
+  paginacao.hidden = false;
+}
+
+formLogs.addEventListener('submit', (e) => {
+  e.preventDefault();
+  paginaLogs = 1;
+  carregarLogs();
+});
+document.getElementById('logs-anterior').addEventListener('click', () => { paginaLogs--; carregarLogs(); });
+document.getElementById('logs-proxima').addEventListener('click', () => { paginaLogs++; carregarLogs(); });
+document.getElementById('botao-csv-logs').addEventListener('click', async () => {
+  const parametros = filtroLogs();
+  parametros.set('formato', 'csv');
+  const resposta = await fetch(`/api/logs?${parametros}`);
+  if (!resposta.ok) {
+    const corpo = await resposta.json().catch(() => ({}));
+    return mostrar('msg-logs', corpo.erro ?? 'Erro ao exportar o log.', 'erro');
+  }
+  const link = criar('a');
+  link.href = URL.createObjectURL(await resposta.blob());
+  link.download = `log-de-atividades-${formLogs.de.value}-a-${formLogs.ate.value}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
 });
 
 // ---------- Alterar minha senha (RF-15, todos os perfis) ----------
