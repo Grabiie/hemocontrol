@@ -58,11 +58,13 @@ export function salvarTemaUsuario(id, tema) {
 
 // Contas de demonstração, uma por perfil (criadas só se ainda não existirem)
 export const SENHA_DEMO = 'hemo123';
+// O perfil já aparece ao lado do nome na tela, então o nome não repete o cargo.
+// "nomeAntigo" renomeia as contas criadas por versões anteriores do seed.
 const USUARIOS_DEMO = [
-  { nome: 'Rita Recepção', cpf: '11144477735', login: 'recepcao', perfil: Recepcionista.PERFIL },
-  { nome: 'Dr. Marcos Lima', cpf: '39053344705', login: 'medico', perfil: Medico.PERFIL, registro: 'CRM-SP 123456' },
-  { nome: 'Enf. Paula Reis', cpf: '15350946056', login: 'enfermeiro', perfil: Enfermeiro.PERFIL, registro: 'COREN-SP 654321' },
-  { nome: 'Gustavo Gestor', cpf: '28625587887', login: 'gestor', perfil: Gestor.PERFIL },
+  { nome: 'Rita Souza', nomeAntigo: 'Rita Recepção', cpf: '11144477735', login: 'recepcao', perfil: Recepcionista.PERFIL },
+  { nome: 'Marcos Lima', nomeAntigo: 'Dr. Marcos Lima', cpf: '39053344705', login: 'medico', perfil: Medico.PERFIL, registro: 'CRM-SP 123456' },
+  { nome: 'Paula Reis', nomeAntigo: 'Enf. Paula Reis', cpf: '15350946056', login: 'enfermeiro', perfil: Enfermeiro.PERFIL, registro: 'COREN-SP 654321' },
+  { nome: 'Gustavo Almeida', nomeAntigo: 'Gustavo Gestor', cpf: '28625587887', login: 'gestor', perfil: Gestor.PERFIL },
 ];
 
 export function garantirUsuariosDemo() {
@@ -70,8 +72,10 @@ export function garantirUsuariosDemo() {
     `INSERT OR IGNORE INTO usuario (nome, cpf, login, senha_hash, perfil, registro_profissional)
      VALUES (?, ?, ?, ?, ?, ?)`,
   );
+  const renomear = db.prepare('UPDATE usuario SET nome = ? WHERE login = ? AND nome = ?');
   let criados = 0;
   for (const u of USUARIOS_DEMO) {
+    renomear.run(u.nome, u.login, u.nomeAntigo);
     if (buscarUsuarioPorLogin(u.login)) continue;
     inserir.run(u.nome, u.cpf, u.login, gerarHashSenha(SENHA_DEMO), u.perfil, u.registro ?? null);
     criados++;
