@@ -438,7 +438,8 @@ button.secundario { background: var(--superficie); color: var(--vermelho); borde
   border-radius: 4px;
   background: var(--superficie);
 }
-.tabela tr.inativo td { opacity: 0.55; }
+/* Conta desativada: o texto fica apagado, mas os botões (Reativar, Gerar senha) continuam com a cor normal */
+.tabela tr.inativo td:not(.acoes-usuario) { opacity: 0.55; }
 .acoes-usuario { white-space: nowrap; width: 1%; }
 /* Na tabela de usuários o nome e o perfil podem quebrar linha, para os botões caberem */
 #lista-usuarios .tabela td:nth-child(1), #lista-usuarios .tabela td:nth-child(3) { white-space: normal; }
