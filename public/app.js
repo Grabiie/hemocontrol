@@ -1029,6 +1029,8 @@ function mostrarSistema(usuario) {
   ultimoRelatorio = null;
 
   if (usuario.perfil === 'GESTOR') {
+    fecharRedefinicaoSenha();
+    listarUsuarios();
     const hoje = new Date();
     document.querySelector('#form-relatorio [name=mes]').value =
       `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
@@ -1037,6 +1039,106 @@ function mostrarSistema(usuario) {
     atualizarSolicitacoes();
   }
 }
+
+// ---------- Usuários do sistema (RF-14, Gestor) ----------
+
+const formUsuario = document.getElementById('form-usuario');
+const formSenha = document.getElementById('form-senha');
+let usuarioDaSenha = null;
+
+// CRM para médico, COREN para enfermeiro; os outros perfis não têm registro profissional
+function atualizarCampoRegistro() {
+  const perfil = formUsuario.perfil.value;
+  const precisa = perfil === 'MEDICO' || perfil === 'ENFERMEIRO';
+  document.getElementById('campo-registro').hidden = !precisa;
+  document.getElementById('rotulo-registro').textContent = perfil === 'MEDICO' ? 'CRM' : 'COREN';
+  formUsuario.registroProfissional.required = precisa;
+  if (!precisa) formUsuario.registroProfissional.value = '';
+}
+formUsuario.perfil.addEventListener('change', atualizarCampoRegistro);
+formUsuario.addEventListener('reset', () => setTimeout(atualizarCampoRegistro));
+atualizarCampoRegistro();
+
+function senhasConferem(form, idMensagem) {
+  if (form.senha.value !== form.confirmacao.value) {
+    mostrar(idMensagem, 'A confirmação não é igual à senha.', 'erro');
+    form.confirmacao.focus();
+    return false;
+  }
+  return true;
+}
+
+function fecharRedefinicaoSenha() {
+  usuarioDaSenha = null;
+  formSenha.reset();
+  formSenha.hidden = true;
+}
+
+function abrirRedefinicaoSenha(u) {
+  usuarioDaSenha = u;
+  formSenha.reset();
+  document.getElementById('titulo-senha').textContent = `Redefinir senha de ${u.nome} (${u.login})`;
+  mostrar('msg-senha', '', '');
+  formSenha.hidden = false;
+  formSenha.senha.focus();
+}
+
+async function listarUsuarios() {
+  const destino = document.getElementById('lista-usuarios');
+  const resposta = await fetch('/api/usuarios');
+  if (resposta.status === 401) return mostrarLogin();
+  const usuarios = await resposta.json();
+  if (!resposta.ok) return mostrar('msg-usuario', usuarios.erro ?? 'Erro ao listar usuários.', 'erro');
+
+  destino.innerHTML = '';
+  const tabela = criarTabela(['Nome', 'Login', 'Perfil', 'Registro', ''], []);
+  const corpo = tabela.tBodies[0];
+  for (const u of usuarios) {
+    const linha = corpo.insertRow();
+    for (const valor of [u.nome, u.login, ROTULO_PERFIL[u.perfil], u.registroProfissional ?? '—']) {
+      linha.insertCell().textContent = valor;
+    }
+    const botao = criar('button', 'pequeno', 'Redefinir senha');
+    botao.type = 'button';
+    botao.addEventListener('click', () => abrirRedefinicaoSenha(u));
+    linha.insertCell().appendChild(botao);
+  }
+  const caixa = criar('div', 'rolagem');
+  caixa.appendChild(tabela);
+  destino.appendChild(caixa);
+}
+
+formUsuario.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!senhasConferem(e.target, 'msg-usuario')) return;
+  const { confirmacao, ...dados } = dadosDoForm(e.target);
+  try {
+    const usuario = await enviar('/api/usuarios', dados);
+    mostrar('msg-usuario', `Usuário ${usuario.nome} cadastrado. Ele já pode entrar com o login "${usuario.login}".`, 'sucesso');
+    e.target.reset();
+    await listarUsuarios();
+  } catch (erro) {
+    mostrar('msg-usuario', erro.message, 'erro');
+  }
+});
+
+formSenha.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!usuarioDaSenha || !senhasConferem(e.target, 'msg-senha')) return;
+  try {
+    await enviar(`/api/usuarios/${usuarioDaSenha.id}/senha`, { senha: e.target.senha.value }, 'PUT');
+    const nome = usuarioDaSenha.nome;
+    fecharRedefinicaoSenha();
+    mostrar('msg-senha', `Senha de ${nome} redefinida.`, 'sucesso');
+  } catch (erro) {
+    mostrar('msg-senha', erro.message, 'erro');
+  }
+});
+
+document.getElementById('botao-cancelar-senha').addEventListener('click', () => {
+  fecharRedefinicaoSenha();
+  mostrar('msg-senha', '', '');
+});
 
 document.getElementById('form-login').addEventListener('submit', async (e) => {
   e.preventDefault();
