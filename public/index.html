@@ -23,12 +23,38 @@
     <h1>HemoControl</h1>
     <p>Gestão de banco de sangue</p>
     <div class="topo-direita">
+      <!-- Na tela de login o tema fica num botão próprio; depois de entrar, vai para o menu do usuário -->
       <button type="button" class="botao-tema" id="botao-tema"></button>
       <div class="usuario-logado" id="usuario-logado" hidden>
-        <span id="nome-usuario"></span>
-        <span class="perfil" id="perfil-usuario"></span>
-        <button type="button" class="sair" id="botao-minha-senha">Alterar senha</button>
-        <button type="button" class="sair" id="botao-sair">Sair</button>
+        <button type="button" class="menu-usuario" id="botao-menu-usuario"
+                aria-haspopup="menu" aria-expanded="false" aria-controls="menu-usuario">
+          <span class="avatar" id="avatar-usuario" aria-hidden="true"></span>
+          <span class="identificacao">
+            <span class="nome" id="nome-usuario"></span>
+            <span class="perfil" id="perfil-usuario"></span>
+          </span>
+          <span class="seta" aria-hidden="true"></span>
+        </button>
+        <div class="menu-suspenso" id="menu-usuario" role="menu" aria-labelledby="botao-menu-usuario" hidden>
+          <div class="menu-cabecalho">
+            <strong id="menu-nome"></strong>
+            <span id="menu-login"></span>
+          </div>
+          <button type="button" role="menuitemcheckbox" id="item-tema" aria-checked="false">
+            <span class="icone" aria-hidden="true">☾</span>
+            <span class="rotulo">Tema escuro</span>
+            <span class="chave" aria-hidden="true"></span>
+          </button>
+          <button type="button" role="menuitem" id="botao-minha-senha">
+            <span class="icone" aria-hidden="true">🔑</span>
+            <span class="rotulo">Alterar senha</span>
+          </button>
+          <hr>
+          <button type="button" role="menuitem" class="perigo" id="botao-sair">
+            <span class="icone" aria-hidden="true">⎋</span>
+            <span class="rotulo">Sair</span>
+          </button>
+        </div>
       </div>
     </div>
   </header>

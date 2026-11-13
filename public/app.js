@@ -960,15 +960,17 @@ function temaDoSistema() {
 function aplicarTema(tema) {
   document.documentElement.dataset.tema = tema;
   const botao = document.getElementById('botao-tema');
-  botao.textContent = tema === 'escuro' ? '☀ Tema claro' : '☾ Tema escuro';
-  botao.setAttribute('aria-label', tema === 'escuro' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro');
+  botao.textContent = tema === 'escuro' ? '☀' : '☾';
+  botao.title = tema === 'escuro' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro';
+  botao.setAttribute('aria-label', botao.title);
+  document.getElementById('item-tema').setAttribute('aria-checked', String(tema === 'escuro'));
 }
 
 function salvarTemaNoNavegador(tema) {
   try { localStorage.setItem(CHAVE_TEMA, tema); } catch { /* navegador sem armazenamento: só vale nesta página */ }
 }
 
-document.getElementById('botao-tema').addEventListener('click', async () => {
+async function alternarTema() {
   const novo = document.documentElement.dataset.tema === 'escuro' ? 'claro' : 'escuro';
   aplicarTema(novo);
   salvarTemaNoNavegador(novo);
@@ -976,7 +978,55 @@ document.getElementById('botao-tema').addEventListener('click', async () => {
     usuarioAtual.tema = novo;
     try { await enviar('/api/preferencias/tema', { tema: novo }, 'PUT'); } catch { /* o tema continua salvo no navegador */ }
   }
+}
+
+document.getElementById('botao-tema').addEventListener('click', alternarTema);
+// No menu, o tema troca sem fechar o menu, para a pessoa ver o resultado na hora
+document.getElementById('item-tema').addEventListener('click', alternarTema);
+
+// ---------- Menu do usuário (nome no topo) ----------
+
+const botaoMenu = document.getElementById('botao-menu-usuario');
+const menuUsuario = document.getElementById('menu-usuario');
+const itensMenu = () => [...menuUsuario.querySelectorAll('[role^=menuitem]')];
+
+function abrirMenu(focarPrimeiro = false) {
+  menuUsuario.hidden = false;
+  botaoMenu.setAttribute('aria-expanded', 'true');
+  if (focarPrimeiro) itensMenu()[0].focus();
+}
+
+function fecharMenu(devolverFoco = false) {
+  if (menuUsuario.hidden) return;
+  menuUsuario.hidden = true;
+  botaoMenu.setAttribute('aria-expanded', 'false');
+  if (devolverFoco) botaoMenu.focus();
+}
+
+botaoMenu.addEventListener('click', () => (menuUsuario.hidden ? abrirMenu() : fecharMenu()));
+botaoMenu.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); abrirMenu(true); }
 });
+menuUsuario.addEventListener('keydown', (e) => {
+  const itens = itensMenu();
+  const i = itens.indexOf(document.activeElement);
+  if (e.key === 'Escape') { e.preventDefault(); fecharMenu(true); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); itens[(i + 1) % itens.length].focus(); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); itens[(i - 1 + itens.length) % itens.length].focus(); }
+  if (e.key === 'Tab') fecharMenu();
+});
+// Alterar senha e Sair fecham o menu; o tema não
+for (const id of ['botao-minha-senha', 'botao-sair']) {
+  document.getElementById(id).addEventListener('click', () => fecharMenu());
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#usuario-logado')) fecharMenu();
+});
+
+function iniciais(nome) {
+  const partes = String(nome ?? '').trim().split(/\s+/).filter(Boolean);
+  return ((partes[0]?.[0] ?? '') + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+}
 
 // Se a pessoa nunca escolheu, acompanha a mudança de tema do sistema operacional
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', () => {
@@ -996,6 +1046,8 @@ const ROTULO_PERFIL = {
 
 function mostrarLogin() {
   usuarioAtual = null;
+  fecharMenu();
+  document.getElementById('botao-tema').hidden = false;
   document.getElementById('sistema').hidden = true;
   document.getElementById('usuario-logado').hidden = true;
   document.getElementById('tela-login').hidden = false;
@@ -1010,6 +1062,11 @@ function mostrarSistema(usuario) {
   }
   document.getElementById('form-inaptidao').hidden = true;
   document.getElementById('nome-usuario').textContent = usuario.nome;
+  document.getElementById('avatar-usuario').textContent = iniciais(usuario.nome);
+  document.getElementById('menu-nome').textContent = usuario.nome;
+  document.getElementById('menu-login').textContent = `${usuario.login} · ${ROTULO_PERFIL[usuario.perfil]}`;
+  document.getElementById('botao-tema').hidden = true;
+  fecharMenu();
   document.getElementById('perfil-usuario').textContent = ROTULO_PERFIL[usuario.perfil];
   document.getElementById('usuario-logado').hidden = false;
   document.getElementById('tela-login').hidden = true;
