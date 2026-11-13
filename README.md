@@ -16,8 +16,8 @@ O objetivo é substituir controles manuais (papel e planilhas), reduzindo perdas
 
 - **Recepcionista:** cadastra doadores.
 - **Profissional de saúde (médico e enfermeiro):** realiza triagem e registra doações.
-- **Gestor:** consulta estoque, atende solicitações, gera relatórios, rastreia doações e bolsas e gerencia as contas de recepcionista, médico e enfermeiro.
-- **Administrador (responsável técnico):** gerencia todas as contas, inclusive as de gestor, e consulta o log de atividades. Não usa as funções do banco de sangue nem vê dados de doadores.
+- **Gestor:** consulta estoque, atende solicitações, gera relatórios, rastreia doações e bolsas e consulta e corrige os dados dos doadores.
+- **Administrador (responsável técnico):** é o único que gerencia contas de usuário e consulta o log de atividades. Não usa as funções do banco de sangue nem vê dados de doadores.
 - **Hospital solicitante (sistema externo):** solicita bolsas.
 
 ### Funcionalidades planejadas
@@ -68,8 +68,8 @@ Todas usam a senha `hemo123`. Cada perfil só acessa as funções que o diagrama
 | `recepcao` | Recepcionista | Cadastrar, buscar e editar doadores |
 | `medico` | Médico | Realizar triagem e registrar inaptidão temporária |
 | `enfermeiro` | Enfermeiro | Realizar triagem e registrar doação (inclusive coleta interrompida) |
-| `gestor` | Gestor | Consultar estoque, registrar e atender solicitações, descartar bolsas vencidas, gerar relatório mensal, rastrear doação ou bolsa e gerenciar recepcionistas, médicos e enfermeiros |
-| `admin` | Administrador | Gerenciar todas as contas, inclusive as de gestor, e consultar o log de atividades |
+| `gestor` | Gestor | Consultar estoque, registrar e atender solicitações, descartar bolsas vencidas, gerar relatório mensal, rastrear doação ou bolsa e buscar e editar doador |
+| `admin` | Administrador | Gerenciar as contas de usuário e consultar o log de atividades |
 
 As contas também são criadas automaticamente na primeira vez que o servidor sobe.
 
@@ -155,9 +155,9 @@ Em desenvolvimento. Implementação inicial focada no fluxo principal do banco d
 - [x] Tema claro e escuro, salvo por usuário e por navegador (RNF-06)
 - [x] Cadastro de doadores (RF-02, RN-01)
 - [x] Busca e edição de doadores (RF-13, RN-08)
-- [x] Cadastro, desativação e senha temporária de usuários pelo gestor e pelo administrador (RF-14)
+- [x] Cadastro, desativação e senha temporária de usuários pelo administrador (RF-14)
 - [x] Troca da própria senha, obrigatória no primeiro acesso (RF-15)
-- [x] Perfil Administrador, que cuida das contas de gestor (RN-12)
+- [x] Perfil Administrador, o único que gerencia contas (RN-12)
 - [x] Log de atividades com filtros e exportação, que não pode ser alterado (RF-16, RNF-07)
 - [x] Rastreio de doação ou bolsa pelo número ou código, com o destino da bolsa (RF-17)
 - [x] Triagem com critérios de aptidão (RF-03, RN-02, RN-03, RN-06)

@@ -54,11 +54,11 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-13
 **Nome:** Buscar e editar doador
-**Descrição:** O sistema deve permitir que o recepcionista busque doadores por parte do nome ou do CPF e corrija os dados cadastrais (nome, data de nascimento, sexo, tipo sanguíneo, telefone e consentimento do responsável). O CPF não pode ser alterado.
+**Descrição:** O sistema deve permitir que o recepcionista e o gestor busquem doadores por parte do nome ou do CPF e corrijam os dados cadastrais (nome, data de nascimento, sexo, tipo sanguíneo, telefone e consentimento do responsável). O CPF não pode ser alterado.
 
 ### RF-14
 **Nome:** Gerenciar usuários
-**Descrição:** O sistema deve permitir que o gestor e o administrador cadastrem usuários (nome, CPF, login e perfil, além do CRM para médicos e do COREN para enfermeiros), gerem uma senha temporária para outro usuário e desativem ou reativem contas, respeitando os perfis que cada um gerencia (RN-12). Login e CPF não se repetem, e o CPF é conferido antes do restante do cadastro. Quem cadastra nunca escolhe nem conhece a senha definitiva: no cadastro e na redefinição o sistema gera uma senha temporária, que é exibida uma única vez, e o usuário é obrigado a trocá-la no próximo acesso (RF-15). Fica registrado quem gerou a senha temporária e quando. Contas não são excluídas, apenas desativadas, para que os registros feitos por elas (triagens, inaptidões, doações) continuem ligados a quem os fez; uma conta desativada não entra no sistema e perde as sessões abertas. Ninguém pode desativar a própria conta nem gerar senha temporária para si.
+**Descrição:** O sistema deve permitir que o administrador cadastre usuários (nome, CPF, login e perfil, além do CRM para médicos e do COREN para enfermeiros), gere uma senha temporária para outro usuário e desative ou reative contas (RN-12). Login e CPF não se repetem, e o CPF é conferido antes do restante do cadastro. Quem cadastra nunca escolhe nem conhece a senha definitiva: no cadastro e na redefinição o sistema gera uma senha temporária, que é exibida uma única vez, e o usuário é obrigado a trocá-la no próximo acesso (RF-15). Fica registrado quem gerou a senha temporária e quando. Contas não são excluídas, apenas desativadas, para que os registros feitos por elas (triagens, inaptidões, doações) continuem ligados a quem os fez; uma conta desativada não entra no sistema e perde as sessões abertas. Ninguém pode desativar a própria conta nem gerar senha temporária para si.
 
 ### RF-15
 **Nome:** Alterar a própria senha
@@ -150,4 +150,4 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RN-12
 **Nome:** Quem gerencia cada conta
-**Descrição:** O gestor gerencia apenas contas de recepcionista, médico e enfermeiro. Contas de gestor são gerenciadas pelo administrador, para que um gestor não consiga desativar ou assumir a conta de outro. O administrador gerencia todos os perfis, menos outros administradores; contas de administrador são criadas e recuperadas apenas pelo terminal do servidor (`npm run admin`), pelo responsável técnico, e essas ações também ficam no log (RF-16). O administrador não usa as funções do banco de sangue nem consulta dados de doadores (cadastro, histórico, triagem, doação, estoque, solicitações e relatório).
+**Descrição:** Só o administrador gerencia contas: ele cuida de todos os perfis, menos de outros administradores. Assim nenhum gestor consegue desativar ou assumir a conta de outro usuário; contas de administrador são criadas e recuperadas apenas pelo terminal do servidor (`npm run admin`), pelo responsável técnico, e essas ações também ficam no log (RF-16). O administrador não usa as funções do banco de sangue nem consulta dados de doadores (cadastro, histórico, triagem, doação, estoque, solicitações e relatório).

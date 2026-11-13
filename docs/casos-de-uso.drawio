@@ -214,8 +214,6 @@
         </mxCell>
       <mxCell id="hc-rf14-uc" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;" value="Gerenciar Usuários" vertex="1">
           <mxGeometry height="60" width="100" x="520" y="720" as="geometry" />
-        </mxCell><mxCell id="hc-rf14-assoc" edge="1" parent="1" source="hc-rf14-uc" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;defaultLabelBackgroundColor=page;endArrow=none;endFill=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="32wGyEksqR8n39EXWkzH-5">
-          <mxGeometry relative="1" as="geometry" />
         </mxCell><mxCell id="hc-rf14-include" edge="1" parent="1" source="hc-rf14-uc" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;defaultLabelBackgroundColor=page;flowAnimation=1;endArrow=open;endFill=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.65;entryY=1;entryDx=0;entryDy=0;" target="32wGyEksqR8n39EXWkzH-50">
           <mxGeometry relative="1" as="geometry" />
         </mxCell><mxCell id="hc-rf14-include-rotulo" connectable="0" parent="hc-rf14-include" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;defaultLabelBackgroundColor=page;" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;" vertex="1">
