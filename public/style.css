@@ -312,6 +312,14 @@ textarea { font: inherit; color: var(--texto); background: var(--superficie); pa
 .bloco-rastreio dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 0.88rem; }
 .bloco-rastreio dt { color: var(--suave); }
 .bloco-rastreio dd { margin: 0; overflow-wrap: anywhere; }
+/* CPF mascarado: parece texto comum; ao passar o mouse, sublinha e mostra que dá para clicar */
+button.revelar-cpf {
+  margin: 0; padding: 0; border: none; border-radius: 0; background: none;
+  color: inherit; font: inherit; font-weight: inherit; text-align: left;
+}
+button.revelar-cpf:hover, button.revelar-cpf:focus-visible {
+  filter: none; color: var(--vermelho); text-decoration: underline dotted; text-underline-offset: 3px;
+}
 .acao-parcial { margin-top: 8px; display: flex; gap: 10px; align-items: center; }
 .acao-parcial button { margin: 0; padding: 6px 14px; }
 .alerta-inaptidao { margin: 8px 0; padding: 8px 10px; border-radius: 6px; background: var(--vermelho-claro); color: var(--vermelho); font-size: 0.85rem; }

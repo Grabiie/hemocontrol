@@ -70,7 +70,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RF-17
 **Nome:** Rastrear doação ou bolsa
-**Descrição:** O sistema deve permitir que o gestor consulte, em um único campo, uma doação pelo seu número ou uma bolsa de sangue pelo seu código (com ou sem o prefixo "HC-"). O resultado mostra a doação (data, volume, se a coleta foi concluída ou interrompida e a triagem de origem), o doador (nome, tipo sanguíneo e CPF mascarado) e a bolsa (tipo, volume, coleta, validade e situação: disponível, vencida aguardando descarte, entregue ou descartada). Para bolsa entregue, mostra o hospital e a solicitação que a receberam; para bolsa descartada, a data do descarte.
+**Descrição:** O sistema deve permitir que o gestor consulte, em um único campo, uma doação pelo seu número ou uma bolsa de sangue pelo seu código (com ou sem o prefixo "HC-"). O resultado mostra a doação (data, volume, se a coleta foi concluída ou interrompida e a triagem de origem), o doador (nome, tipo sanguíneo e CPF, que aparece mascarado até o gestor clicar para revelar) e a bolsa (tipo, volume, coleta, validade e situação: disponível, vencida aguardando descarte, entregue ou descartada). Para bolsa entregue, mostra o hospital e a solicitação que a receberam; para bolsa descartada, a data do descarte.
 
 ## Requisitos Não Funcionais (RNF)
 

@@ -333,7 +333,6 @@ app.post('/api/doacoes', exigir(Enfermeiro), (req, res) => {
 });
 
 // RF-17 — Rastrear doação ou bolsa (Gestor): pelo nº da doação ou pelo código da bolsa
-const mascararCpf = (cpf) => `***.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-**`;
 
 app.get('/api/rastreio', exigir(Gestor), (req, res) => {
   const criterio = req.usuario.rastrear(req.query.termo);
@@ -348,8 +347,8 @@ app.get('/api/rastreio', exigir(Gestor), (req, res) => {
   const { doacao, doador, bolsa, entrega } = achado;
   res.json({
     doacao,
-    // RNF-03: o CPF aparece mascarado, o nome basta para identificar o doador
-    doador: doador ? { ...doador, cpf: mascararCpf(doador.cpf) } : null,
+    // RNF-03: a tela mostra o CPF mascarado e só revela quando o gestor clica
+    doador,
     bolsa: bolsa ? { ...bolsa.toJSON(), situacao: bolsa.situacao() } : null,
     entrega,
   });

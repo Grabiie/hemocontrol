@@ -984,6 +984,31 @@ const ROTULO_SITUACAO_BOLSA = {
   DESCARTADA: ['Descartada', 'neutro'],
 };
 
+// RNF-03: o CPF aparece mascarado e só é revelado quando o gestor clica nele
+function cpfRevelavel(cpf) {
+  const d = String(cpf).replace(/\D/g, '');
+  const completo = `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+  const mascarado = `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**`;
+  const botao = criar('button', 'revelar-cpf', mascarado);
+  botao.type = 'button';
+  botao.title = 'Mostrar CPF completo';
+  botao.setAttribute('aria-pressed', 'false');
+  botao.addEventListener('click', () => {
+    const revelado = botao.getAttribute('aria-pressed') !== 'true';
+    botao.textContent = revelado ? completo : mascarado;
+    botao.title = revelado ? 'Ocultar CPF' : 'Mostrar CPF completo';
+    botao.setAttribute('aria-pressed', String(revelado));
+  });
+  return botao;
+}
+
+// "Nome · CPF", com o CPF mascarado que revela ao clicar
+function linhaDoador(doador) {
+  const linha = criar('span', null, `${doador.nome} · `);
+  linha.appendChild(cpfRevelavel(doador.cpf));
+  return linha;
+}
+
 // Bloco com título e pares "rótulo: valor"
 function blocoRastreio(titulo, pares) {
   const bloco = criar('div', 'bloco-rastreio');
@@ -1021,7 +1046,7 @@ document.getElementById('form-rastreio').addEventListener('submit', async (e) =>
         ['Volume', `${doacao.volumeMl} mL`],
         ['Situação', doacao.cancelada ? 'Coleta interrompida' : 'Coleta concluída'],
         ['Triagem', `nº ${doacao.triagem.id}, em ${dataHoraCurta(doacao.triagem.dataHora)}`],
-        ...(doador ? [['Doador', `${doador.nome} · ${doador.cpf}`], ['Tipo do doador', TIPOS[doador.tipoSanguineo]]] : []),
+        ...(doador ? [['Doador', linhaDoador(doador)], ['Tipo do doador', TIPOS[doador.tipoSanguineo]]] : []),
       ]));
     }
 
