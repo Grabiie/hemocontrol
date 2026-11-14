@@ -80,7 +80,7 @@ test('Coleta normal continua exigindo a RN-07', () => {
 
 // ---------- RF-07, RF-08 e RNF-05: solicitações ----------
 
-const hospital = new Hospital({ id: 1, nome: 'Hospital Teste', cnpj: '11.222.333/0001-81', chaveAcesso: 'chave-secreta' });
+const hospital = new Hospital({ id: 1, nome: 'Hospital Teste', cnpj: '11.222.333/0001-81', chaveHash: Hospital.hashDaChave('chave-secreta') });
 const bolsa = (diasAtras, tipo = 'O_NEGATIVO') =>
   new BolsaSangue({ tipoSanguineo: tipo, volumeMl: 450, dataColeta: somarDias(new Date(), -diasAtras) });
 

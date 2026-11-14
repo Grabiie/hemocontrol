@@ -93,3 +93,48 @@ test('RNF-07: o banco grava logs, mas recusa alterar ou apagar', async () => {
   assert.throws(() => db.exec("UPDATE log_auditoria SET descricao = 'outra'"), /não pode ser alterado/);
   assert.throws(() => db.exec('DELETE FROM log_auditoria'), /não pode ser apagado/);
 });
+
+test('RF-18: administrador cadastra hospital com CNPJ válido e gera a chave de acesso', async () => {
+  const { Hospital } = await import('../src/models/Hospital.js');
+  const admin = conta(Administrador, 1);
+  assert.throws(() => admin.cadastrarHospital({ nome: '', cnpj: '11.222.333/0001-81' }), /nome/);
+  assert.throws(() => admin.cadastrarHospital({ nome: 'H', cnpj: '11.222.333/0001-80' }), /CNPJ/);
+  const hospital = admin.cadastrarHospital({ nome: ' Hospital Regional ', cnpj: '11.444.777/0001-61' });
+  assert.ok(hospital instanceof Hospital);
+  assert.equal(hospital.nome, 'Hospital Regional');
+  const chave = admin.gerarChaveHospital(hospital);
+  assert.match(chave, /^hc_[\w-]{32}$/);
+  assert.equal(hospital.validarChave(chave), true);
+  assert.ok(!hospital.chaveHash.includes(chave)); // só o hash fica guardado
+  assert.equal(typeof conta(Gestor, 2).cadastrarHospital, 'undefined');
+});
+
+test('RF-18: chave nova invalida a anterior e hospital desativado é recusado', async () => {
+  const admin = conta(Administrador, 1);
+  const hospital = admin.cadastrarHospital({ nome: 'H', cnpj: '11.444.777/0001-61' });
+  const antiga = admin.gerarChaveHospital(hospital);
+  const nova = admin.gerarChaveHospital(hospital);
+  assert.equal(hospital.validarChave(antiga), false);
+  assert.equal(hospital.validarChave(nova), true);
+  admin.desativarHospital(hospital);
+  assert.equal(hospital.validarChave(nova), false);
+  admin.reativarHospital(hospital);
+  assert.equal(hospital.validarChave(nova), true);
+});
+
+test('RF-18: o banco guarda o hash da chave e acha o hospital por ela; CNPJ não se repete', async () => {
+  process.env.HEMOCONTROL_DB = path.join(mkdtempSync(path.join(tmpdir(), 'hemo-')), 'teste.db');
+  const { db } = await import('../src/database.js');
+  const repo = await import('../src/repositorios.js');
+  const admin = conta(Administrador, 1);
+  const hospital = admin.cadastrarHospital({ nome: 'Hospital Regional', cnpj: '11.444.777/0001-61' });
+  const chave = admin.gerarChaveHospital(hospital);
+  const salvo = repo.salvarHospital(hospital);
+  assert.equal(repo.buscarHospitalPorChave(chave).id, salvo.id);
+  assert.equal(repo.buscarHospitalPorChave('hc_errada'), null);
+  const gravada = db.prepare('SELECT chave_acesso FROM hospital WHERE id = ?').get(salvo.id).chave_acesso;
+  assert.ok(gravada.startsWith('sha256:') && !gravada.includes(chave));
+  const repetido = admin.cadastrarHospital({ nome: 'Outro', cnpj: '11444777000161' });
+  admin.gerarChaveHospital(repetido);
+  assert.throws(() => repo.salvarHospital(repetido), /já pertence/);
+});
