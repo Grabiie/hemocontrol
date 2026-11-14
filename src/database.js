@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 // SQLite nativo do Node (22.13 ou mais novo): não precisa compilar nada no npm install
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
@@ -70,7 +71,8 @@ db.exec(`
     data_fim TEXT NOT NULL
   );
 
-  -- Sistema externo que envia solicitações (RF-07, RNF-05)
+  -- Sistema externo que envia solicitações (RF-07, RNF-05, RF-18).
+  -- chave_acesso guarda só o hash da chave ("sha256:..."), nunca a chave em si.
   CREATE TABLE IF NOT EXISTS hospital (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,
@@ -149,6 +151,21 @@ if (!colunasUsuario.includes('senha_redefinida_em')) {
   db.exec('ALTER TABLE usuario ADD COLUMN senha_redefinida_em TEXT');
   db.exec('ALTER TABLE usuario ADD COLUMN senha_redefinida_por INTEGER REFERENCES usuario(id)');
 }
+
+// RF-18: hospital ativo, quando e por quem a chave atual foi gerada
+const colunasHospital = db.prepare('PRAGMA table_info(hospital)').all().map((c) => c.name);
+if (!colunasHospital.includes('ativo')) {
+  db.exec('ALTER TABLE hospital ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1');
+  db.exec('ALTER TABLE hospital ADD COLUMN chave_gerada_em TEXT');
+  db.exec('ALTER TABLE hospital ADD COLUMN chave_gerada_por INTEGER REFERENCES usuario(id)');
+}
+// RNF-02 aplicado à chave: bancos antigos guardavam a chave em texto puro; passam a guardar o hash
+for (const { id, chave_acesso: chave } of db.prepare("SELECT id, chave_acesso FROM hospital WHERE chave_acesso NOT LIKE 'sha256:%'").all()) {
+  db.prepare('UPDATE hospital SET chave_acesso = ? WHERE id = ?')
+    .run(`sha256:${createHash('sha256').update(chave).digest('hex')}`, id);
+}
+// O CNPJ do hospital de demonstração São Lucas estava com o dígito verificador errado
+db.prepare("UPDATE hospital SET cnpj = '44555666000181' WHERE cnpj = '44555666000172'").run();
 
 const colunasBolsa = db.prepare('PRAGMA table_info(bolsa_sangue)').all().map((c) => c.name);
 if (!colunasBolsa.includes('data_descarte')) {

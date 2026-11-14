@@ -21,6 +21,16 @@ function formatarCpf(valor) {
   return d;
 }
 
+// CNPJ: 11222333000181 -> 11.222.333/0001-81
+function formatarCnpj(valor) {
+  const d = String(valor).replace(/\D/g, '').slice(0, 14);
+  if (d.length > 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+  if (d.length > 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+  if (d.length > 5) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+  if (d.length > 2) return `${d.slice(0, 2)}.${d.slice(2)}`;
+  return d;
+}
+
 // Telefone: 11987654321 -> (11) 98765-4321 (celular) | 1134567890 -> (11) 3456-7890 (fixo)
 function formatarTelefone(valor) {
   let d = valor.replace(/\D/g, '');
@@ -51,6 +61,7 @@ function aplicarMascara(seletor, formatar) {
 
 aplicarMascara('input[name=cpf]', formatarCpf);
 aplicarMascara('input[name=telefone]', formatarTelefone);
+aplicarMascara('input[name=cnpj]', formatarCnpj);
 
 // ---------- Conferências antes de preencher o formulário ----------
 
@@ -1281,7 +1292,9 @@ function mostrarSistema(usuario) {
 
   if (usuario.perfil === 'ADMINISTRADOR') {
     document.getElementById('aviso-senha-temporaria').hidden = true;
+    document.getElementById('aviso-chave-hospital').hidden = true;
     listarUsuarios();
+    listarHospitaisAdmin();
     iniciarLogs();
   }
   if (usuario.perfil === 'GESTOR') {
@@ -1438,6 +1451,99 @@ formUsuario.addEventListener('submit', async (e) => {
     await listarUsuarios();
   } catch (erro) {
     mostrar('msg-usuario', erro.message, 'erro');
+  }
+});
+
+// ---------- Hospitais da integração (RF-18, Administrador) ----------
+
+const formHospital = document.getElementById('form-hospital');
+
+// A chave aparece uma vez só, com o jeito de usar, para o administrador repassar ao hospital
+function mostrarChaveHospital(nome, chave) {
+  const aviso = document.getElementById('aviso-chave-hospital');
+  aviso.innerHTML = '';
+  const copiar = criar('button', 'pequeno secundario', 'Copiar');
+  copiar.type = 'button';
+  copiar.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(chave);
+      copiar.textContent = 'Copiada';
+    } catch {
+      copiar.textContent = 'Selecione e copie';
+    }
+  });
+  const linhaChave = criar('div', 'linha-chave');
+  linhaChave.append(criar('code', null, chave), copiar);
+  aviso.append(
+    criar('strong', null, `Chave de acesso de ${nome}`),
+    linhaChave,
+    criar('span', null, 'Envie ao responsável técnico do hospital por um canal seguro. Ela não aparece de novo. '
+      + 'O sistema do hospital manda as solicitações para POST /api/integracao/solicitacoes, com a chave no cabeçalho X-Chave-Acesso.'),
+  );
+  aviso.hidden = false;
+}
+
+async function listarHospitaisAdmin() {
+  const destino = document.getElementById('lista-hospitais');
+  const resposta = await fetch('/api/admin/hospitais');
+  if (resposta.status === 401) return mostrarLogin();
+  const hospitais = await resposta.json();
+  if (!resposta.ok) return mostrar('msg-hospital', hospitais.erro ?? 'Erro ao listar os hospitais.', 'erro');
+
+  destino.innerHTML = '';
+  if (hospitais.length === 0) {
+    destino.appendChild(criar('p', 'vazio', 'Nenhum hospital cadastrado.'));
+    return;
+  }
+  const tabela = criarTabela(['Hospital', 'CNPJ', 'Situação', 'Chave gerada', 'Último envio', ''], []);
+  const corpo = tabela.tBodies[0];
+  for (const h of hospitais) {
+    const linha = corpo.insertRow();
+    if (!h.ativo) linha.className = 'inativo';
+    const chave = h.chaveGeradaEm
+      ? `${formatarData(h.chaveGeradaEm)}${h.chaveGeradaPor ? ` (${h.chaveGeradaPor.split(' ')[0]})` : ''}`
+      : 'Demonstração';
+    const integracao = h.ultimaIntegracao ? formatarData(h.ultimaIntegracao) : 'Nunca';
+    for (const valor of [h.nome, formatarCnpj(h.cnpj), h.ativo ? 'Ativo' : 'Desativado', chave, integracao]) {
+      linha.insertCell().textContent = valor;
+    }
+    const acoes = linha.insertCell();
+    acoes.className = 'acoes-usuario';
+    if (h.ativo) {
+      acoes.appendChild(botaoComConfirmacao('Nova chave', 'Confirmar?', async () => {
+        try {
+          const { chave: nova } = await enviar(`/api/admin/hospitais/${h.id}/chave`, {}, 'PUT');
+          mostrar('msg-hospital', `A chave anterior de ${h.nome} deixou de funcionar.`, 'sucesso');
+          mostrarChaveHospital(h.nome, nova);
+        } catch (erro) { mostrar('msg-hospital', erro.message, 'erro'); }
+        await listarHospitaisAdmin();
+      }));
+    }
+    acoes.appendChild(botaoComConfirmacao(h.ativo ? 'Desativar' : 'Reativar', 'Confirmar?', async () => {
+      try {
+        await enviar(`/api/admin/hospitais/${h.id}/situacao`, { ativo: !h.ativo }, 'PUT');
+        mostrar('msg-hospital', h.ativo
+          ? `${h.nome} não consegue mais enviar solicitações e sai da lista do gestor.`
+          : `${h.nome} voltou a poder enviar solicitações com a chave atual.`, 'sucesso');
+      } catch (erro) { mostrar('msg-hospital', erro.message, 'erro'); }
+      await listarHospitaisAdmin();
+    }, h.ativo ? 'pequeno secundario' : 'pequeno'));
+  }
+  const caixa = criar('div', 'rolagem');
+  caixa.appendChild(comoCartoes(tabela));
+  destino.appendChild(caixa);
+}
+
+formHospital.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const { hospital, chave } = await enviar('/api/admin/hospitais', dadosDoForm(e.target));
+    mostrar('msg-hospital', `${hospital.nome} cadastrado.`, 'sucesso');
+    mostrarChaveHospital(hospital.nome, chave);
+    e.target.reset();
+    await listarHospitaisAdmin();
+  } catch (erro) {
+    mostrar('msg-hospital', erro.message, 'erro');
   }
 });
 

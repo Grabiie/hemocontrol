@@ -530,3 +530,12 @@ button.secundario { background: var(--superficie); color: var(--vermelho); borde
   .botoes-exportar button { width: 100%; }
   .paginacao { justify-content: space-between; }
 }
+
+/* ---------- Hospitais da integração (RF-18) ---------- */
+.chave-hospital { display: flex; flex-direction: column; gap: 6px; }
+.chave-hospital .linha-chave { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chave-hospital code { font-size: 0.95rem; overflow-wrap: anywhere; user-select: all; }
+.chave-hospital button { margin: 0; }
+.chave-hospital span { font-size: 0.82rem; color: var(--texto); }
+#painel-hospitais > .dica-campo { margin: 8px 0 0; }
+#lista-hospitais .tabela td:nth-child(1), #lista-hospitais .tabela td:nth-child(4) { white-space: normal; }

@@ -141,6 +141,49 @@ app.put('/api/usuarios/:id/situacao', exigir(Administrador), (req, res) => {
   res.json({ ativo: usuario.estaAtivo() });
 });
 
+// RF-18 — Gerenciar hospitais da integração (Administrador)
+const formatarCnpj = (c) => `${c.slice(0, 2)}.${c.slice(2, 5)}.${c.slice(5, 8)}/${c.slice(8, 12)}-${c.slice(12)}`;
+const descreverHospital = (h) => `${h.nome} (CNPJ ${formatarCnpj(h.cnpj)})`;
+
+app.get('/api/admin/hospitais', exigir(Administrador), (req, res) => {
+  res.json(repo.listarHospitaisParaAdmin());
+});
+
+// Cadastra e já gera a chave, que volta só nesta resposta
+app.post('/api/admin/hospitais', exigir(Administrador), (req, res) => {
+  const hospital = req.usuario.cadastrarHospital(req.body ?? {});
+  const chave = req.usuario.gerarChaveHospital(hospital);
+  const salvo = repo.salvarHospital(hospital, req.usuario.id);
+  registrar(req, AcaoLog.HOSPITAL_CADASTRADO, `Cadastrou ${descreverHospital(salvo)} e gerou a chave de acesso.`);
+  res.status(201).json({ hospital: salvo, chave });
+});
+
+function buscarHospital(req, res) {
+  const hospital = repo.buscarHospitalPorId(Number(req.params.id));
+  if (!hospital) res.status(404).json({ erro: 'Hospital não encontrado.' });
+  return hospital;
+}
+
+app.put('/api/admin/hospitais/:id/chave', exigir(Administrador), (req, res) => {
+  const hospital = buscarHospital(req, res);
+  if (!hospital) return;
+  const chave = req.usuario.gerarChaveHospital(hospital);
+  repo.atualizarChaveHospital(hospital, req.usuario.id);
+  registrar(req, AcaoLog.HOSPITAL_CHAVE_GERADA, `Gerou chave nova para ${descreverHospital(hospital)}; a anterior foi invalidada.`);
+  res.json({ chave });
+});
+
+app.put('/api/admin/hospitais/:id/situacao', exigir(Administrador), (req, res) => {
+  const hospital = buscarHospital(req, res);
+  if (!hospital) return;
+  if (req.body?.ativo) req.usuario.reativarHospital(hospital);
+  else req.usuario.desativarHospital(hospital);
+  repo.atualizarSituacaoHospital(hospital);
+  registrar(req, hospital.estaAtivo() ? AcaoLog.HOSPITAL_REATIVADO : AcaoLog.HOSPITAL_DESATIVADO,
+    `${hospital.estaAtivo() ? 'Reativou' : 'Desativou'} ${descreverHospital(hospital)}.`);
+  res.json({ ativo: hospital.estaAtivo() });
+});
+
 // RF-16 — Consultar o log de atividades (Administrador)
 const POR_PAGINA = 50;
 
@@ -452,6 +495,7 @@ app.post('/api/solicitacoes', exigir(Gestor), (req, res) => {
   const { hospitalId, tipoSanguineo, quantidade } = req.body ?? {};
   const hospital = repo.buscarHospitalPorId(Number(hospitalId));
   if (!hospital) return res.status(404).json({ erro: 'Hospital não encontrado.' });
+  if (!hospital.estaAtivo()) return res.status(409).json({ erro: `${hospital.nome} está desativado.` });
 
   const solicitacao = new Solicitacao({ hospital, tipoSanguineo, quantidade, origemManual: true });
   req.usuario.registrarSolicitacao(solicitacao);
@@ -466,13 +510,20 @@ app.post('/api/integracao/solicitacoes', (req, res) => {
   if (!chave) return res.status(401).json({ erro: 'Informe a chave de acesso no cabeçalho X-Chave-Acesso (RNF-05).' });
 
   const hospital = repo.buscarHospitalPorChave(chave);
-  if (!hospital) return res.status(403).json({ erro: 'Chave de acesso inválida (RNF-05).' });
+  const origem = `integração (${origemDaRequisicao(req)})`;
+  if (!hospital || !hospital.validarChave(chave)) {
+    // RF-16: tentativas recusadas ficam no log, para o administrador perceber chave vazada ou antiga
+    registrar(req, AcaoLog.INTEGRACAO_RECUSADA,
+      hospital ? `${hospital.nome} está desativado.` : 'Chave de acesso inválida.', null, origem);
+    return res.status(403).json({
+      erro: hospital ? 'Este hospital está desativado no banco de sangue (RF-18).' : 'Chave de acesso inválida (RNF-05).',
+    });
+  }
 
   const { tipoSanguineo, quantidade } = req.body ?? {};
   const solicitacao = new Solicitacao({ hospital, tipoSanguineo, quantidade, origemManual: false });
   const salva = repo.salvarSolicitacao(solicitacao);
-  registrar(req, AcaoLog.SOLICITACAO_REGISTRADA, `${descreverSolicitacao(salva)}, via integração.`, null,
-    `integração (${origemDaRequisicao(req)})`);
+  registrar(req, AcaoLog.SOLICITACAO_REGISTRADA, `${descreverSolicitacao(salva)}, via integração.`, null, origem);
   res.status(201).json(salva);
 });
 

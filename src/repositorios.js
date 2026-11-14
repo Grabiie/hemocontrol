@@ -534,11 +534,35 @@ export function inaptidoesDoDoador(doadorId) {
 // ---------- Hospitais e solicitações (RF-07, RF-08, RNF-05) ----------
 
 function linhaParaHospital(linha) {
-  return new Hospital({ id: linha.id, nome: linha.nome, cnpj: linha.cnpj, chaveAcesso: linha.chave_acesso });
+  return new Hospital({
+    id: linha.id, nome: linha.nome, cnpj: linha.cnpj, chaveHash: linha.chave_acesso,
+    ativo: linha.ativo !== 0, chaveGeradaEm: linha.chave_gerada_em,
+  });
 }
 
-export function listarHospitais() {
-  return db.prepare('SELECT * FROM hospital ORDER BY nome').all().map(linhaParaHospital);
+// Só os ativos: são os que o gestor pode escolher numa solicitação manual (RF-07)
+export function listarHospitais({ incluirInativos = false } = {}) {
+  const onde = incluirInativos ? '' : 'WHERE ativo = 1';
+  return db.prepare(`SELECT * FROM hospital ${onde} ORDER BY nome COLLATE NOCASE`).all().map(linhaParaHospital);
+}
+
+// RF-18: lista do administrador, com quem gerou a chave atual e quantas solicitações o hospital já fez
+export function listarHospitaisParaAdmin() {
+  return db
+    .prepare(
+      `SELECT h.*, u.nome AS gerada_por,
+              (SELECT COUNT(*) FROM solicitacao s WHERE s.hospital_id = h.id) AS solicitacoes,
+              (SELECT MAX(s.data_solicitacao) FROM solicitacao s WHERE s.hospital_id = h.id AND s.origem_manual = 0) AS ultima_integracao
+       FROM hospital h LEFT JOIN usuario u ON u.id = h.chave_gerada_por
+       ORDER BY h.ativo DESC, h.nome COLLATE NOCASE`,
+    )
+    .all()
+    .map((l) => ({
+      ...linhaParaHospital(l).toJSON(),
+      chaveGeradaPor: l.gerada_por,
+      solicitacoes: l.solicitacoes,
+      ultimaIntegracao: l.ultima_integracao,
+    }));
 }
 
 export function buscarHospitalPorId(id) {
@@ -546,21 +570,50 @@ export function buscarHospitalPorId(id) {
   return linha ? linhaParaHospital(linha) : null;
 }
 
-// RNF-05: encontra o hospital dono da chave, comparando com validarChave()
-export function buscarHospitalPorChave(chave) {
-  return listarHospitais().find((h) => h.validarChave(chave)) ?? null;
+export function buscarHospitalPorCnpj(cnpj) {
+  const linha = db.prepare('SELECT * FROM hospital WHERE cnpj = ?').get(String(cnpj ?? '').replace(/\D/g, ''));
+  return linha ? linhaParaHospital(linha) : null;
 }
 
-// Hospitais de demonstração, com as chaves usadas na integração
+// RNF-05: procura pelo hash da chave (o banco não tem a chave) e confere com validarChave().
+// Devolve o hospital mesmo desativado, para a integração poder dizer o motivo da recusa.
+export function buscarHospitalPorChave(chave) {
+  const linha = db.prepare('SELECT * FROM hospital WHERE chave_acesso = ?').get(Hospital.hashDaChave(chave));
+  return linha ? linhaParaHospital(linha) : null;
+}
+
+// RF-18: grava um hospital novo; o CNPJ não pode se repetir
+export function salvarHospital(hospital, responsavelId = null) {
+  const mesmoCnpj = buscarHospitalPorCnpj(hospital.cnpj);
+  if (mesmoCnpj) throw new Error(`Este CNPJ já pertence ao ${mesmoCnpj.nome}.`);
+  if (!hospital.chaveHash) throw new Error('Gere a chave de acesso antes de salvar o hospital.');
+  const { lastInsertRowid } = db
+    .prepare('INSERT INTO hospital (nome, cnpj, chave_acesso, ativo, chave_gerada_em, chave_gerada_por) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(hospital.nome, hospital.cnpj, hospital.chaveHash, hospital.estaAtivo() ? 1 : 0,
+      hospital.chaveGeradaEm?.toISOString() ?? null, responsavelId);
+  return buscarHospitalPorId(Number(lastInsertRowid));
+}
+
+export function atualizarChaveHospital(hospital, responsavelId = null) {
+  db.prepare('UPDATE hospital SET chave_acesso = ?, chave_gerada_em = ?, chave_gerada_por = ? WHERE id = ?')
+    .run(hospital.chaveHash, hospital.chaveGeradaEm?.toISOString() ?? null, responsavelId, hospital.id);
+}
+
+export function atualizarSituacaoHospital(hospital) {
+  db.prepare('UPDATE hospital SET ativo = ? WHERE id = ?').run(hospital.estaAtivo() ? 1 : 0, hospital.id);
+}
+
+// Hospitais de demonstração, com chaves fixas para testar a integração (estão no README).
+// Hospitais cadastrados pelo administrador recebem chaves aleatórias (RF-18).
 export const HOSPITAIS_DEMO = [
   { nome: 'Hospital Santa Clara', cnpj: '11222333000181', chaveAcesso: 'hsc-demo-7f3a9c' },
-  { nome: 'Hospital São Lucas', cnpj: '44555666000172', chaveAcesso: 'hsl-demo-2b8e4d' },
+  { nome: 'Hospital São Lucas', cnpj: '44555666000181', chaveAcesso: 'hsl-demo-2b8e4d' },
 ];
 
 export function garantirHospitaisDemo() {
   const inserir = db.prepare('INSERT OR IGNORE INTO hospital (nome, cnpj, chave_acesso) VALUES (?, ?, ?)');
   let criados = 0;
-  for (const h of HOSPITAIS_DEMO) criados += inserir.run(h.nome, h.cnpj, h.chaveAcesso).changes;
+  for (const h of HOSPITAIS_DEMO) criados += inserir.run(h.nome, h.cnpj, Hospital.hashDaChave(h.chaveAcesso)).changes;
   return criados;
 }
 

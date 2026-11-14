@@ -306,6 +306,20 @@
       <div id="lista-usuarios"></div>
     </section>
 
+    <!-- RF-18: hospitais que enviam solicitações pela integração, só para o administrador -->
+    <section class="painel largo" id="painel-hospitais" data-perfis="ADMINISTRADOR">
+      <h2>Hospitais da integração</h2>
+      <form id="form-hospital" class="form-linha">
+        <label>Nome do hospital <input name="nome" required autocomplete="off" placeholder="Ex.: Hospital Regional"></label>
+        <label class="estreito">CNPJ <input name="cnpj" required placeholder="00.000.000/0000-00" inputmode="numeric" maxlength="18" autocomplete="off"></label>
+        <button type="submit">Cadastrar e gerar chave</button>
+      </form>
+      <p class="dica-campo">O sistema gera a chave de acesso que o hospital usa para enviar solicitações. Ela aparece uma única vez; se for perdida, gere outra.</p>
+      <p class="mensagem" id="msg-hospital"></p>
+      <div class="senha-temporaria chave-hospital" id="aviso-chave-hospital" hidden></div>
+      <div id="lista-hospitais"></div>
+    </section>
+
     <!-- RF-16: registro de atividades, só para o administrador -->
     <section class="painel largo" id="painel-logs" data-perfis="ADMINISTRADOR">
       <h2>Log de atividades</h2>

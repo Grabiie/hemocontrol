@@ -1,5 +1,7 @@
 import { Usuario } from './Usuario.js';
 import { Gestor } from './Gestor.js';
+import { Hospital } from './Hospital.js';
+import { cnpjValido } from './cnpj.js';
 import { AcaoLog } from './enums.js';
 import { criarConta, conferirAlvo, PERFIS_OPERACIONAIS } from './gestaoDeContas.js';
 import { lerData } from './datas.js';
@@ -36,6 +38,34 @@ export class Administrador extends Usuario {
   reativarUsuario(usuario) {
     conferirAlvo(this, usuario, { propria: 'reativar a própria conta', outra: 'reativar a conta' });
     usuario.reativar();
+  }
+
+  // RF-18: cadastra o hospital que vai usar a integração. A chave é gerada em seguida
+  // (gerarChaveHospital) e só o hash dela fica guardado. O CNPJ único é conferido pelo repositório.
+  cadastrarHospital({ nome, cnpj }) {
+    if (!String(nome ?? '').trim()) throw new Error('O nome do hospital é obrigatório.');
+    if (!cnpjValido(cnpj)) throw new Error('CNPJ inválido.');
+    return new Hospital({ nome, cnpj });
+  }
+
+  // RF-18: gera uma chave nova (no cadastro ou quando a anterior vazou ou foi perdida).
+  // A chave anterior deixa de funcionar na hora; a nova só é mostrada uma vez.
+  gerarChaveHospital(hospital) {
+    if (!(hospital instanceof Hospital)) throw new Error('Hospital não encontrado.');
+    if (hospital.id !== null && !hospital.estaAtivo()) throw new Error('Reative o hospital antes de gerar uma chave nova.');
+    return hospital.gerarNovaChave();
+  }
+
+  // RF-18: um hospital desativado não consegue enviar solicitações pela integração
+  // nem aparece para o gestor; as solicitações antigas continuam ligadas a ele.
+  desativarHospital(hospital) {
+    if (!(hospital instanceof Hospital)) throw new Error('Hospital não encontrado.');
+    hospital.desativar();
+  }
+
+  reativarHospital(hospital) {
+    if (!(hospital instanceof Hospital)) throw new Error('Hospital não encontrado.');
+    hospital.reativar();
   }
 
   // RF-16: confere os filtros da consulta de logs. A busca em si é feita pelo repositório.
