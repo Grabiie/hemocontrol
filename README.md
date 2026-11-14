@@ -17,7 +17,7 @@ O objetivo é substituir controles manuais (papel e planilhas), reduzindo perdas
 - **Recepcionista:** cadastra doadores.
 - **Profissional de saúde (médico e enfermeiro):** realiza triagem e registra doações.
 - **Gestor:** consulta estoque, atende solicitações, gera relatórios, rastreia doações e bolsas e consulta e corrige os dados dos doadores.
-- **Administrador (responsável técnico):** é o único que gerencia contas de usuário e consulta o log de atividades. Não usa as funções do banco de sangue nem vê dados de doadores.
+- **Administrador (responsável técnico):** é o único que gerencia contas de usuário e os hospitais da integração, e consulta o log de atividades. Não usa as funções do banco de sangue nem vê dados de doadores.
 - **Hospital solicitante (sistema externo):** solicita bolsas.
 
 ### Funcionalidades planejadas
@@ -69,7 +69,7 @@ Todas usam a senha `hemo123`. Cada perfil só acessa as funções que o diagrama
 | `medico` | Médico | Realizar triagem e registrar inaptidão temporária |
 | `enfermeiro` | Enfermeiro | Realizar triagem e registrar doação (inclusive coleta interrompida) |
 | `gestor` | Gestor | Consultar estoque, registrar e atender solicitações, descartar bolsas vencidas, gerar relatório mensal, rastrear doação ou bolsa e buscar e editar doador |
-| `admin` | Administrador | Gerenciar as contas de usuário e consultar o log de atividades |
+| `admin` | Administrador | Gerenciar as contas de usuário e os hospitais da integração e consultar o log de atividades |
 
 As contas também são criadas automaticamente na primeira vez que o servidor sobe.
 
@@ -90,7 +90,7 @@ O administrador vê, na tela, o que cada usuário fez: entradas e saídas, login
 
 ### Integração com hospitais (RF-07 e RNF-05)
 
-O sistema do hospital envia solicitações para `POST /api/integracao/solicitacoes`, autenticando-se com a chave de acesso no cabeçalho `X-Chave-Acesso`. O sistema do hospital é simulado; os hospitais de demonstração são:
+O sistema do hospital envia solicitações para `POST /api/integracao/solicitacoes`, autenticando-se com a chave de acesso no cabeçalho `X-Chave-Acesso`. O administrador cadastra os hospitais pela tela e o sistema gera a chave de cada um, que aparece uma única vez; o banco guarda só o hash dela (RF-18). O sistema do hospital é simulado; os hospitais de demonstração têm chaves fixas, para facilitar o teste:
 
 | Hospital | Chave de acesso |
 |---|---|
@@ -106,7 +106,7 @@ curl -X POST http://localhost:3000/api/integracao/solicitacoes \
   -d '{"tipoSanguineo": "A_POSITIVO", "quantidade": 3}'
 ```
 
-Sem a chave, a resposta é `401`; com uma chave inválida, `403`.
+Sem a chave, a resposta é `401`; com uma chave inválida ou de um hospital desativado, `403`, e a tentativa fica no log de atividades.
 
 Para rodar os testes das regras de negócio:
 
@@ -164,6 +164,7 @@ Em desenvolvimento. Implementação inicial focada no fluxo principal do banco d
 - [x] Registro de doação e geração de bolsa, com limite de volume por peso (RF-04, RN-04, RN-05, RN-07)
 - [x] Consulta de estoque com gráfico, alerta de estoque crítico e de bolsas perto de vencer (RF-05, RF-06)
 - [x] Solicitações de hospitais, manuais e por integração com chave de acesso (RF-07, RNF-05)
+- [x] Cadastro de hospitais com geração de chave de acesso, troca de chave e desativação (RF-18)
 - [x] Atendimento de solicitações priorizando a validade mais próxima, com atendimento parcial (RF-08)
 - [x] Listagem e descarte de bolsas vencidas (RF-09)
 - [x] Relatório mensal com destino das bolsas e exportação em PDF e CSV (RF-10)

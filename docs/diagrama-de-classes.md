@@ -47,7 +47,9 @@ SENHA_ALTERADA, SENHA_REDEFINIDA, USUARIO_CADASTRADO,
 USUARIO_DESATIVADO, USUARIO_REATIVADO, DOADOR_CADASTRADO,
 DOADOR_ATUALIZADO, TRIAGEM_REGISTRADA, INAPTIDAO_REGISTRADA,
 DOACAO_REGISTRADA, BOLSAS_DESCARTADAS, SOLICITACAO_REGISTRADA,
-SOLICITACAO_ATENDIDA, RELATORIO_GERADO
+SOLICITACAO_ATENDIDA, RELATORIO_GERADO, HOSPITAL_CADASTRADO,
+HOSPITAL_CHAVE_GERADA, HOSPITAL_DESATIVADO, HOSPITAL_REATIVADO,
+INTEGRACAO_RECUSADA
 ```
 
 ## Classes
@@ -113,6 +115,10 @@ Administrador
 + desativarUsuario(usuario: Usuario): void
 + reativarUsuario(usuario: Usuario): void
 + consultarLogs(de: Date, ate: Date, usuario: Usuario, acao: AcaoLog): List<RegistroLog>
++ cadastrarHospital(nome: String, cnpj: String): Hospital
++ gerarChaveHospital(hospital: Hospital): String
++ desativarHospital(hospital: Hospital): void
++ reativarHospital(hospital: Hospital): void
 ```
 
 O Administrador não herda de Gestor: os dois são Usuario, mas o administrador não tem as funções do banco de sangue (estoque, solicitações, relatório). Só ele gerencia contas (RN-12): `PERFIS_GERENCIADOS` lista os perfis que ele pode gerenciar (todos menos administrador). No código, `consultarLogs()` confere o período e os filtros, e a busca no banco é feita pela camada de persistência.
@@ -277,10 +283,18 @@ Hospital
 - id: int
 - nome: String
 - cnpj: String
-- chaveAcesso: String
+- chaveHash: String
+- ativo: boolean = true
+- chaveGeradaEm: Date
 -----------------------------------
++ gerarNovaChave(): String
 + validarChave(chave: String): boolean
++ estaAtivo(): boolean
++ desativar(): void
++ reativar(): void
 ```
+
+`gerarNovaChave()` devolve a chave uma única vez e guarda só o hash dela em `chaveHash`, como acontece com a senha do usuário (RNF-02 e RNF-05).
 
 ```
 Solicitacao
@@ -368,7 +382,8 @@ A multiplicidade fica ao lado da classe a que se refere, como no exemplo `Client
 | RF-05 (bolsas perto de vencer) | `Estoque.DIAS_ALERTA_VENCIMENTO` e `Estoque.listarProximasDoVencimento()` |
 | RF-06 (alerta de estoque) | `Estoque.LIMITE_CRITICO` e `estaCritico()` |
 | RF-07 (solicitação manual ou integrada) | `Solicitacao.origemManual` |
-| RNF-05 (chave de acesso) | `Hospital.chaveAcesso` e `validarChave()` |
+| RNF-05 (chave de acesso) | `Hospital.chaveHash` e `validarChave()` |
+| RF-18 (hospitais da integração) | `cadastrarHospital()`, `gerarChaveHospital()`, `desativarHospital()` e `reativarHospital()` em Administrador, `Hospital.gerarNovaChave()` e `Hospital.ativo` |
 | RF-09 (descarte) | `Gestor.descartarBolsasVencidas()`, `Estoque.listarVencidas()`, `BolsaSangue.dataDescarte` |
 | RF-10 (relatório) | `Gestor.gerarRelatorioMensal()` e `RelatorioMensal.calcularTotais()` |
 | RF-07 (registrar solicitação) | classe `Solicitacao`, `Solicitacao.origemManual` e `Gestor.registrarSolicitacao()` |

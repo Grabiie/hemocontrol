@@ -72,6 +72,10 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 **Nome:** Rastrear doação ou bolsa
 **Descrição:** O sistema deve permitir que o gestor consulte, em um único campo, uma doação pelo seu número ou uma bolsa de sangue pelo seu código (com ou sem o prefixo "HC-"). O resultado mostra a doação (data, volume, se a coleta foi concluída ou interrompida e a triagem de origem), o doador (nome, tipo sanguíneo e CPF, que aparece mascarado até o gestor clicar para revelar) e a bolsa (tipo, volume, coleta, validade e situação: disponível, vencida aguardando descarte, entregue ou descartada). Para bolsa entregue, mostra o hospital e a solicitação que a receberam; para bolsa descartada, a data do descarte.
 
+### RF-18
+**Nome:** Gerenciar hospitais da integração
+**Descrição:** O sistema deve permitir que o administrador cadastre os hospitais que enviam solicitações pela integração (nome e CNPJ, conferido pelos dígitos verificadores e sem repetição). No cadastro, o sistema gera uma chave de acesso aleatória, exibida uma única vez para ser repassada ao hospital. O administrador pode gerar uma chave nova, o que invalida a anterior na mesma hora, e desativar ou reativar o hospital. Um hospital desativado não consegue enviar solicitações e não aparece para o gestor no registro manual, mas as solicitações antigas continuam ligadas a ele. A lista mostra quando e por quem a chave atual foi gerada e a data do último envio pela integração.
+
 ## Requisitos Não Funcionais (RNF)
 
 ### RNF-01
@@ -92,7 +96,7 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RNF-05
 **Nome:** Autenticação de sistemas externos
-**Descrição:** O sistema deve aceitar solicitações de sistemas externos somente com chave de acesso válida, rejeitando as demais requisições com mensagem de erro.
+**Descrição:** O sistema deve aceitar solicitações de sistemas externos somente com chave de acesso válida, de um hospital ativo, rejeitando as demais requisições com mensagem de erro e registrando a recusa no log (RF-16). Como as senhas (RNF-02), a chave nunca é guardada em texto puro: o banco guarda só o hash dela.
 
 ### RNF-06
 **Nome:** Tema claro e escuro
@@ -150,4 +154,4 @@ Documentação no padrão de linguagem estruturada apresentado na Aula 2: identi
 
 ### RN-12
 **Nome:** Quem gerencia cada conta
-**Descrição:** Só o administrador gerencia contas: ele cuida de todos os perfis, menos de outros administradores. Assim nenhum gestor consegue desativar ou assumir a conta de outro usuário; contas de administrador são criadas e recuperadas apenas pelo terminal do servidor (`npm run admin`), pelo responsável técnico, e essas ações também ficam no log (RF-16). O administrador não usa as funções do banco de sangue nem consulta dados de doadores (cadastro, histórico, triagem, doação, estoque, solicitações e relatório).
+**Descrição:** Só o administrador gerencia contas de usuário e os hospitais da integração (RF-18): nas contas, ele cuida de todos os perfis, menos de outros administradores. Assim nenhum gestor consegue desativar ou assumir a conta de outro usuário; contas de administrador são criadas e recuperadas apenas pelo terminal do servidor (`npm run admin`), pelo responsável técnico, e essas ações também ficam no log (RF-16). O administrador não usa as funções do banco de sangue nem consulta dados de doadores (cadastro, histórico, triagem, doação, estoque, solicitações e relatório).
